@@ -61,15 +61,17 @@ model = AutoEncoder(input=784, latent=50)  #MNIST images (28, 28) –> flatten!
 loss_fn = nn.MSELoss()
 optimiser = torch.optim.Adam(model.parameters(), lr=0.01)
 
-epochs = 3
+epochs = 10
+noise = 0.4
 losses = []
 for e in range(epochs):
     loss_sum = 0
     for X, _ in dataloader_train:
         X = X.reshape((-1, 784))  #MNIST images (28, 28) –> flatten!!!
+        noisy = X + noise * torch.randn_like(X)
 
         optimiser.zero_grad()
-        pred = model(X)
+        pred = model(noisy)
         loss = loss_fn(pred, X)
         loss.backward()
         optimiser.step()
@@ -102,18 +104,23 @@ with torch.no_grad():
     loader_subset = DataLoader(test_subset, batch_size=5)
     for X, _ in loader_subset:
         X = X.reshape((-1, 784))
-        pred = model(X)
+        noisy = X + noise * torch.randn_like(X)
+        pred = model(noisy)
         pred = pred.view(-1, 1, 28, 28)  #does not changes elements in memory!!!
 
-        fig, axes = plt.subplots(2, 5, figsize=(7, 7))
+        fig, axes = plt.subplots(3, 5, figsize=(7, 7))
 
         for i in range(5):
             axes[0, i].imshow(X[i].view(28, 28), cmap="gray")
             axes[0, i].axis("off")
-            axes[0, 1].set(title=f"{i}th original")
+            axes[0, 1].set_title(f"original")
 
-            axes[1, i].imshow(pred[i].view(28, 28), cmap="gray")
-            axes[0, i].axis("off")
-            axes[1, 1].set(title=f"{i}th predicted")
+            axes[1, i].imshow(noisy[i].view(28, 28), cmap="gray")
+            axes[1, i].axis("off")
+            axes[1, i].set_title(f"noisy")
+
+            axes[2, i].imshow(pred[i].view(28, 28), cmap="gray")
+            axes[2, i].axis("off")
+            axes[2, i].set_title(f"predictions")
         
         plt.show()
