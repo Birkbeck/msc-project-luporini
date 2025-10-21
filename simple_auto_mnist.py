@@ -42,23 +42,38 @@ mnist_test = MNIST(root="./datasets", download=True, train=False, transform=ToTe
 dataloader_train = DataLoader(mnist_train, batch_size=30, shuffle=True)
 dataloader_test = DataLoader(mnist_test, batch_size=30, shuffle=True)
 
-model = AutoEncoder(input=784, latent=50)  #MNIST images (28, 28) –> flatten!!!
-loss_fn = nn.MSELoss()
-optimiser = torch.optim.Adam(model.parameters(), lr=0.01)
+print("\nunderstanding torch.squeeze/unsqueeze")
+for X, _ in dataloader_train:
+    print(X.shape)
+    X = torch.squeeze(X)
+    print(X.shape)
+    X = torch.unsqueeze(X, dim=1)
+    print(X.shape)
+    break
+print("\nnow flattening with tensor.reshape")
+for X, _ in dataloader_train:
+    print(X.shape)
+    X = X.reshape((-1, 784))
+    print(X.shape)
+    break
 
-epochs = 10
-losses = []
-for e in range(epochs):
-    loss_sum = 0
-    for X, _ in dataloader_train:
-        X = X.reshape((-1, 784))  #MNIST images (28, 28) –> flatten!!!
+# model = AutoEncoder(input=784, latent=50)  #MNIST images (28, 28) –> flatten!!!
+# loss_fn = nn.MSELoss()
+# optimiser = torch.optim.Adam(model.parameters(), lr=0.01)
 
-        optimiser.zero_grad()
-        pred = model(X)
-        loss = loss_fn(pred, X)
-        loss.backward()
-        optimiser.step()
-        loss_sum += loss.item()
+# epochs = 10
+# losses = []
+# for e in range(epochs):
+#     loss_sum = 0
+#     for X, _ in dataloader_train:
+#         X = X.reshape((-1, 784))  #MNIST images (28, 28) –> flatten!!!
 
-    losses.append(loss_sum)
-    print(f"loss at {e}th epoch: {loss_sum}")
+#         optimiser.zero_grad()
+#         pred = model(X)
+#         loss = loss_fn(pred, X)
+#         loss.backward()
+#         optimiser.step()
+#         loss_sum += loss.item()
+
+#     losses.append(loss_sum)
+#     print(f"loss at {e}th epoch: {loss_sum}")
