@@ -111,7 +111,7 @@ loss_fn = nn.MSELoss()
 optimiser = torch.optim.Adam(model.parameters(), lr=0.01)
 
 epochs = 5
-noise = 0.01
+noise = 0.99999
 losses = []
 for e in tqdm(range(epochs)):
     loss_sum = 0
