@@ -79,20 +79,20 @@ for e in range(epochs):
         loss_sum += loss.item()
 
     losses.append(loss_sum/(i+1))
-    print(f"loss at {e}th epoch: {loss_sum/(i+1)}")
+    print(f"Avg.loss at {e}th epoch: {loss_sum/(i+1)}")
 
 
 model.eval()
 with torch.no_grad():
     tot_loss = 0
-    for X, _ in dataloader_test:
+    for i, (X, _) in enumerate(dataloader_test):
         X = X.reshape((-1, 784))
         noisy = X + noise * torch.randn_like(X)
         pred = model(noisy)
         loss = loss_fn(pred, X)
         tot_loss += loss.item()
     
-    print(f"\ntotal test loss: {tot_loss}")
+    print(f"\nAvg. test loss: {tot_loss/(i+1)}")
 
     # test_subset = Subset(mnist_test, indices=range(5))
     # small_loader = DataLoader(test_subset, batch_size=5)
