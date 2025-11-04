@@ -66,7 +66,8 @@ noise = 0.4
 losses = []
 for e in range(epochs):
     loss_sum = 0
-    for X, _ in dataloader_train:
+    i = 0
+    for i, (X, _) in enumerate(dataloader_train):
         X = X.reshape((-1, 784))  #MNIST images (28, 28) –> flatten!!!
         noisy = X + noise * torch.randn_like(X)
 
@@ -77,8 +78,8 @@ for e in range(epochs):
         optimiser.step()
         loss_sum += loss.item()
 
-    losses.append(loss_sum)
-    print(f"loss at {e}th epoch: {loss_sum}")
+    losses.append(loss_sum/(i+1))
+    print(f"loss at {e}th epoch: {loss_sum/(i+1)}")
 
 
 model.eval()
@@ -86,7 +87,8 @@ with torch.no_grad():
     tot_loss = 0
     for X, _ in dataloader_test:
         X = X.reshape((-1, 784))
-        pred = model(X)
+        noisy = X + noise * torch.randn_like(X)
+        pred = model(noisy)
         loss = loss_fn(pred, X)
         tot_loss += loss.item()
     
