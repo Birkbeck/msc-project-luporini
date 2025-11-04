@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 import torch
 from torch import nn
 
+from architectures import TiniestAutoEncoder
 from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader, Subset
@@ -33,7 +34,7 @@ dataloader_test = DataLoader(mnist_test, batch_size=30, shuffle=True)
 #     print(X.shape)
 #     break
 
-model = AutoEncoder(input=784, latent=50)  #MNIST images (28, 28) –> flatten!!!
+model = TiniestAutoEncoder(input=784, latent=50)  #MNIST images (28, 28) –> flatten!!!
 loss_fn = nn.MSELoss()
 optimiser = torch.optim.Adam(model.parameters(), lr=0.01)
 
