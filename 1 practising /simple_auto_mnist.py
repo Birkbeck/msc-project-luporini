@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 import torch
 from torch import nn
 
-from architectures import TiniestAutoEncoder
+from architectures import TinyConvAutoEncoder
 from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader, Subset
@@ -105,18 +105,17 @@ dataloader_test = DataLoader(mnist_test, batch_size=30, shuffle=True)
 #         plt.show()
 
 
-model = TiniestAutoEncoder(input=784, latent=50)  #MNIST images (28, 28) –> flatten!!!
+model = TinyConvAutoEncoder()  #MNIST images (28, 28) –> flatten!!!
 loss_fn = nn.MSELoss()
 optimiser = torch.optim.Adam(model.parameters(), lr=0.01)
 
-epochs = 10
+epochs = 5
 noise = 0.4
 losses = []
 for e in range(epochs):
     loss_sum = 0
     i = 0
     for i, (X, _) in enumerate(dataloader_train):
-        X = X.reshape((-1, 784))  #MNIST images (28, 28) –> flatten!!!
         noisy = X + noise * torch.randn_like(X)
 
         optimiser.zero_grad()
@@ -134,7 +133,6 @@ model.eval()
 with torch.no_grad():
     tot_loss = 0
     for i, (X, _) in enumerate(dataloader_test):
-        X = X.reshape((-1, 784))
         noisy = X + noise * torch.randn_like(X)
         pred = model(noisy)
         loss = loss_fn(pred, X)
@@ -146,7 +144,6 @@ with torch.no_grad():
     test_subset = Subset(mnist_test, indices=range(5))
     loader_subset = DataLoader(test_subset, batch_size=5)
     for X, _ in loader_subset:
-        X = X.reshape((-1, 784))
         noisy = X + noise * torch.randn_like(X)
         pred = model(noisy)
         pred = pred.view(-1, 1, 28, 28)  #does not changes elements in memory!!!
