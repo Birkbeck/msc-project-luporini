@@ -11,30 +11,6 @@ from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader, Subset
 
-class AutoEncoder(nn.Module):
-
-
-    def __init__(self, input, latent, nonlinearity=nn.ReLU):
-        super().__init__()
-        self._input = input
-        self._latent = latent
-        self._nonl = nonlinearity
-
-        self.encoder = nn.Sequential(
-            nn.Linear(self._input, self._latent),
-            self._nonl()
-        )
-
-        self.decoder = nn.Sequential(
-            nn.Linear(self._latent, self._input),
-            nn.Sigmoid()
-        )
-
-    def forward(self, data):
-        output = self.encoder(data)
-        output = self.decoder(output)
-        return output
-    
 
 mnist_train = MNIST(root="./datasets", download=True, train=True, transform=ToTensor())
 mnist_test = MNIST(root="./datasets", download=True, train=False, transform=ToTensor())
