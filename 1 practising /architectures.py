@@ -41,7 +41,7 @@ class TinyConvAutoEncoder(nn.Module):
             nn.Conv2d(self._channels, 10, kernel_size=3, stride=2, padding=1),
             self._nonl(),
             nn.Conv2d(10, 20, kernel_size=3, stride=2, padding=1),
-            self._nonl()
+            self._nonl() #using nn.ReLU might push values out of 0,1 interval??
         )
 
         self.decoder = nn.Sequential(
