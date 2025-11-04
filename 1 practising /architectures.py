@@ -84,19 +84,27 @@ class FlexyConvAE(nn.Module):
             self._nonl() #using nn.ReLU might push values out of 0,1 interval??
         )
 
-        # need to compute out_padding for deconvolution..
-        # compute it using convolution and transposeConv formulas
-        C1 = (self._input + 2*self._pad - self._kernel)//self._stride + 1
-        C2 = (C1 + 2*self._pad - self._kernel)//self._stride + 1
-        out_p = self._input - ((C2 - 1)*self._stride - 2*self._pad + self._kernel)
+        # # need to compute out_padding for deconvolution????
+        # # but PyTorch constrains out_pad < stride ⛔️
+        # # compute it using convolution and transposeConv formulas
+        # C1 = (self._input + 2*self._pad - self._kernel)//self._stride + 1
+        # C2 = (C1 + 2*self._pad - self._kernel)//self._stride + 1
+        # out_p = self._input - ((C2 - 1)*self._stride - 2*self._pad + self._kernel)
+        # self.decoder = nn.Sequential(
+        #     nn.ConvTranspose2d(20, 10, kernel_size=self._kernel, stride=self._stride, padding=self._pad, output_padding=out_p),
+        #     self._nonl(),
+        #     nn.ConvTranspose2d(10, self._channels, kernel_size=self._kernel, stride=self._stride, padding=self._pad, output_padding=out_p),
+        #     nn.Sigmoid()
+        # )
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(20, 10, kernel_size=self._kernel, stride=self._stride, padding=self._pad, output_padding=out_p),
+            nn.ConvTranspose2d(20, 10, kernel_size=self._kernel, stride=self._stride, padding=self._pad, output_padding=1),
             self._nonl(),
-            nn.ConvTranspose2d(10, self._channels, kernel_size=self._kernel, stride=self._stride, padding=self._pad, output_padding=out_p),
+            nn.ConvTranspose2d(10, self._channels, kernel_size=self._kernel, stride=self._stride, padding=self._pad, output_padding=1),
             nn.Sigmoid()
         )
 
     def forward(self, data):
         output = self.encoder(data)
         output = self.decoder(output)
+        output = output[:, :, :self._input, :self._input]
         return output

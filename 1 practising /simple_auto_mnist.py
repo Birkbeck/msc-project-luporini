@@ -106,14 +106,14 @@ dataloader_test = DataLoader(mnist_test, batch_size=30, shuffle=True)
 #         plt.show()
 
 
-model = FlexyConvAE()  #MNIST images (28, 28) –> flatten!!!
+model = archi.FlexyConvAE(stride=8)  #MNIST images (28, 28) –> flatten!!!
 loss_fn = nn.MSELoss()
 optimiser = torch.optim.Adam(model.parameters(), lr=0.01)
 
 epochs = 5
-noise = 0.99999
+noise = 0.5
 losses = []
-for e in tqdm(range(epochs)):
+for e in range(epochs):
     loss_sum = 0
     i = 0
     for i, (X, _) in enumerate(dataloader_train):
@@ -127,7 +127,7 @@ for e in tqdm(range(epochs)):
         loss_sum += loss.item()
 
     losses.append(loss_sum/(i+1))
-    print(f"Avg.loss at {e}th epoch: {loss_sum/(i+1)}")
+    print(f"Avg.loss at {e+1}th epoch: {loss_sum/(i+1)}")
 
 
 model.eval()
