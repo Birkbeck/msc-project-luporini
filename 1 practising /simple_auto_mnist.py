@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 
 import torch
 from torch import nn
+from tqdm.auto import tqdm
 
 from architectures import TinyConvAutoEncoder
 from torchvision.datasets import MNIST
@@ -110,9 +111,9 @@ loss_fn = nn.MSELoss()
 optimiser = torch.optim.Adam(model.parameters(), lr=0.01)
 
 epochs = 5
-noise = 0.4
+noise = 0.01
 losses = []
-for e in range(epochs):
+for e in tqdm(range(epochs)):
     loss_sum = 0
     i = 0
     for i, (X, _) in enumerate(dataloader_train):
