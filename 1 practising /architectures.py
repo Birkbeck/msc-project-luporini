@@ -68,6 +68,12 @@ class FlexyConvAE(nn.Module):
     kernel: filter size
     nonlinearity: activation function after convLayers
     """
+    def conv_output_size(input, pad, kernel, stride):
+        return (input + 2*pad - kernel)//stride + 1
+    
+    def deconv_output_padding(input, output, pad, kernel,  stride):
+        return output - (( - 1)*stride - 2*pad + kernel)
+
     def __init__(self, input=28, channels=1, stride=2, padding=1, kernel=3, nonlinearity=nn.ReLU):
         super().__init__()
         self._input = input
@@ -85,26 +91,20 @@ class FlexyConvAE(nn.Module):
         )
 
         # # need to compute out_padding for deconvolution????
-        # # but PyTorch constrains out_pad < stride ⛔️
-        # # compute it using convolution and transposeConv formulas
-        # C1 = (self._input + 2*self._pad - self._kernel)//self._stride + 1
-        # C2 = (C1 + 2*self._pad - self._kernel)//self._stride + 1
-        # out_p = self._input - ((C2 - 1)*self._stride - 2*self._pad + self._kernel)
-        # self.decoder = nn.Sequential(
-        #     nn.ConvTranspose2d(20, 10, kernel_size=self._kernel, stride=self._stride, padding=self._pad, output_padding=out_p),
-        #     self._nonl(),
-        #     nn.ConvTranspose2d(10, self._channels, kernel_size=self._kernel, stride=self._stride, padding=self._pad, output_padding=out_p),
-        #     nn.Sigmoid()
-        # )
+        # but PyTorch constrains out_pad < stride ⛔️
+        # compute it using convolution and transposeConv formulas
+        C1 = (self._input + 2*self._pad - self._kernel)//self._stride + 1
+        C2 = (C1 + 2*self._pad - self._kernel)//self._stride + 1
+        out_p1 = C1 - ((C2 - 1)*self._stride - 2*self._pad + self._kernel)
+        out_p2 = self._input - ((C1 - 1)*self._stride - 2*self._pad + self._kernel)
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(20, 10, kernel_size=self._kernel, stride=self._stride, padding=self._pad, output_padding=1),
+            nn.ConvTranspose2d(20, 10, kernel_size=self._kernel, stride=self._stride, padding=self._pad, output_padding=out_p1),
             self._nonl(),
-            nn.ConvTranspose2d(10, self._channels, kernel_size=self._kernel, stride=self._stride, padding=self._pad, output_padding=1),
+            nn.ConvTranspose2d(10, self._channels, kernel_size=self._kernel, stride=self._stride, padding=self._pad, output_padding=out_p2),
             nn.Sigmoid()
         )
 
     def forward(self, data):
         output = self.encoder(data)
         output = self.decoder(output)
-        output = output[:, :, :self._input, :self._input]
         return output
