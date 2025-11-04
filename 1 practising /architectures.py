@@ -68,12 +68,6 @@ class FlexyConvAE(nn.Module):
     kernel: filter size
     nonlinearity: activation function after convLayers
     """
-    def conv_output_size(input, pad, kernel, stride):
-        return (input + 2*pad - kernel)//stride + 1
-    
-    def deconv_output_padding(input, output, pad, kernel,  stride):
-        return output - (( - 1)*stride - 2*pad + kernel)
-
     def __init__(self, input=28, channels=1, stride=2, padding=1, kernel=3, nonlinearity=nn.ReLU):
         super().__init__()
         self._input = input

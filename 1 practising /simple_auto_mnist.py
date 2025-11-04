@@ -106,7 +106,7 @@ dataloader_test = DataLoader(mnist_test, batch_size=30, shuffle=True)
 #         plt.show()
 
 
-model = archi.FlexyConvAE(stride=5)  #MNIST images (28, 28) –> flatten!!!
+model = archi.FlexyConvAE(stride=3)  #MNIST images (28, 28) –> flatten!!!
 loss_fn = nn.MSELoss()
 optimiser = torch.optim.Adam(model.parameters(), lr=0.01)
 
