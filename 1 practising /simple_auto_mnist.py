@@ -8,7 +8,7 @@ import torch
 from torch import nn
 from tqdm.auto import tqdm
 
-from architectures import TinyConvAutoEncoder
+import architectures as archi
 from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader, Subset
@@ -106,7 +106,7 @@ dataloader_test = DataLoader(mnist_test, batch_size=30, shuffle=True)
 #         plt.show()
 
 
-model = TinyConvAutoEncoder()  #MNIST images (28, 28) –> flatten!!!
+model = FlexyConvAE()  #MNIST images (28, 28) –> flatten!!!
 loss_fn = nn.MSELoss()
 optimiser = torch.optim.Adam(model.parameters(), lr=0.01)
 
