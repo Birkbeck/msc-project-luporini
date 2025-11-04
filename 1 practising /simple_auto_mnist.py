@@ -146,7 +146,6 @@ with torch.no_grad():
     for X, _ in loader_subset:
         noisy = X + noise * torch.randn_like(X)
         pred = model(noisy)
-        pred = pred.view(-1, 1, 28, 28)  #does not changes elements in memory!!!
 
         fig, axes = plt.subplots(3, 5, figsize=(7, 7))
 
