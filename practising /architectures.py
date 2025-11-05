@@ -61,17 +61,16 @@ class FlexyConvAE(nn.Module):
     """
     Based on TinyConvAE but adding stride arg
 
-    input: image width/height
-    channels: input channels (e.g., greyscale == 1)
-    stride: stride value.. this is the same for each convolutional layer
+    input_shape: e.g., MNIST == (1, 28, 28); CIFAR10 == (3, 32, 32)
+    stride: stride value.. the same for each convolutional layer
     padding: padding pixels
     kernel: filter size
     nonlinearity: activation function after convLayers
     """
-    def __init__(self, input=28, channels=1, stride=2, padding=1, kernel=3, nonlinearity=nn.ReLU):
+    def __init__(self, input_shape=(1, 28, 28), stride=2, padding=1, kernel=3, nonlinearity=nn.ReLU):
         super().__init__()
-        self._input = input
-        self._channels = channels
+        self._input = input_shape[1]
+        self._channels = input_shape[0]
         self._stride = stride
         self._pad = padding
         self._kernel = kernel
@@ -102,3 +101,4 @@ class FlexyConvAE(nn.Module):
         output = self.encoder(data)
         output = self.decoder(output)
         return output
+    
