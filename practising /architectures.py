@@ -68,7 +68,14 @@ class FlexyConvAE(nn.Module):
         kernel: filter size
         nonlinearity: activation function after convLayers
     """
-    def __init__(self, input_shape=(1, 28, 28), stride=2, padding=1, kernel=3, nonlinearity=nn.ReLU):
+    def __init__(
+            self,
+            input_shape=(1, 28, 28),
+            stride=2,
+            padding=1,
+            kernel=3,
+            nonlinearity=nn.ReLU
+    ):
         super().__init__()
         self._input = input_shape[1]
         self._channels = input_shape[0]
@@ -116,7 +123,15 @@ class TinyConvClassifier(nn.Module):
         nonlinearity: activation function after convLayers
         classes: number of classes (problem/dataset dependent)
     """
-    def __init__(self, input_shape=(1, 28, 28), stride=2, padding=1, kernel=3, nonlinearity=nn.ReLU, classes=10):
+    def __init__(
+            self,
+            input_shape=(1, 28, 28),
+            stride=2,
+            padding=1,
+            kernel=3,
+            nonlinearity=nn.ReLU,
+            classes=10
+    ):
         super().__init__()
         self._input = input_shape[1]
         self._channels = input_shape[0]
