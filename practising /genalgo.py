@@ -139,7 +139,7 @@ class GeneticAlgorithm():
             parent_fitnesses = group_fitness(self._population, self._fit_fn)
             parents = list(zip(self._population, parent_fitnesses))
             
-            children = []
+            children = []  # too big tournament??? pop_size//3???
             for tournament in range(self._pop_size//2):
                 pool = random.sample(parents, k=self._pop_size//2)
                 sorted_pool = sorted(pool, key=lambda x: x[1], reverse=True)
