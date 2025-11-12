@@ -48,14 +48,18 @@ def mutate(guy:torch.Tensor, m_chance=0.05, mode="small", m_rate=0.3) -> torch.T
     return guy + mutation
 
 
-def crossover(parent1, parent2):
+def crossover(parent1, parent2, type="uniform"):
     """
-    uniform crossover between two flat 1D tensors
+    uniform crossover between two flat 1D tensors by default. If type != "uniform", then one-point.
     """
-    mask = torch.randint_like(parent1, 2)
-    child1 = torch.where(mask, parent1, parent2)
-    child2 = torch.where(mask, parent2, parent1)
-    
+    if type == "uniform":
+        mask = torch.randint_like(parent1, 2)
+        child1 = torch.where(mask, parent1, parent2)
+        child2 = torch.where(mask, parent2, parent1)
+    else:
+        rip = torch.randint(0, parent1.numel()-1, size=(1,)).item() #for fun..
+        child1 = torch.cat([parent1[:rip], parent2[rip:]])
+        child2 = torch.cat([parent2[:rip], parent1[rip:]])
     return child1, child2
 
 
