@@ -132,9 +132,10 @@ class GeneticAlgorithm():
             sorted_whole = sorted(whole, key=lambda x: x[1], reverse=True)
 
             self._population = [m for m, _ in sorted_whole[:self._pop_size]]
+            self._fitnesses = [f for _, f in sorted_whole[:self._pop_size]]
 
             if (i+1) % report_jump == 0:
-                print(f"{i+1}th generationn | avg. population finess: {self.avg_finess()}")
+                print(f"{i+1}th generationn | avg. population finess: {self.avg_fitness()}")
 
 
     def avg_fitness(self):
