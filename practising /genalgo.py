@@ -89,7 +89,16 @@ class GeneticAlgorithm():
         self._population = [deepcopy(model) for i in range(self._pop_size)]
         self._fitnesses = [None for i in range(self._pop_size)]
         
-    def evolve(self, m_prob=0.3, generations=5): # ⁉️
+    def evolve(self, generations=10, report_jump=2, m_prob=0.3):
+        """
+        evolution method👍
+
+        careful: do you want access to mutation parameters????
+
+        args:
+            generations: number of generations
+            report_jump: integer n, with report given every n generations
+        """
 
         for i in range(generations):
             parent_fitnesses = fitness(self._population, self._fit_fn)
@@ -124,9 +133,15 @@ class GeneticAlgorithm():
 
             self._population = [m for m, _ in sorted_whole[:self._pop_size]]
 
+            if (i+1) % report_jump == 0:
+                print(f"{i+1}th generationn | avg. population finess: {self.avg_finess()}")
 
 
-
+    def avg_fitness(self):
+        fitnesses = [i for i in self._fitnesses if i is not None]
+        if not fitnesses:
+            return None
+        return torch.mean(torch.tensor(fitnesses)).item()
 
 
 mymodel = nn.Linear(3, 2, bias=True) # model, not a tensor!!!
