@@ -119,7 +119,7 @@ class GeneticAlgorithm():
             problem="AE"
     ):
         self._model = model
-        self._pop_size = pop_size
+        self._pop_size = pop_size # ⁉️need it⁉️
         self._fit_fn = fit_fn(data, problem=problem) #model_fitness is HIGHER ORDER
         self._data = data
         self._population = [deepcopy(model) for i in range(self._pop_size)]
@@ -139,7 +139,7 @@ class GeneticAlgorithm():
             parent_fitnesses = group_fitness(self._population, self._fit_fn)
             parents = list(zip(self._population, parent_fitnesses))
             
-            children = []  # too big tournament??? pop_size//3???
+            children = []  # too big tournament??? pop_size//3??? just 3-4???
             for tournament in range(self._pop_size//2):
                 pool = random.sample(parents, k=self._pop_size//2)
                 sorted_pool = sorted(pool, key=lambda x: x[1], reverse=True)
