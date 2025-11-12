@@ -177,8 +177,13 @@ class GeneticAlgorithm():
         if not fitnesses:
             return None
         return torch.mean(torch.tensor(fitnesses)).item()
+    
+    def extract_best(self, k=1):
+        zipped = list(zip(self._population, self._fitnesses))
+        sorted_population = sorted(zipped, key=lambda x: x[1], reverse=True)
+        return sorted_population[:k]
 
 
-mymodel = nn.Linear(3, 2, bias=True) # model, not a tensor!!!
+
 
 
