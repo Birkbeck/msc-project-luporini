@@ -9,8 +9,8 @@ from torchvision.datasets import FashionMNIST
 from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader, Subset
 
-data_train = FashionMNIST(root="./0 datasets", download=True, train=True, transform=ToTensor())
-data_test = FashionMNIST(root="./0 datasets", download=True, train=False, transform=ToTensor())
+data_train = FashionMNIST(root="./datasets", download=True, train=True, transform=ToTensor())
+data_test = FashionMNIST(root="./datasets", download=True, train=False, transform=ToTensor())
 
 # dataloader_train = DataLoader(data_train, batch_size=30)
 # dataloader_test = DataLoader(data_test, batch_size=30)

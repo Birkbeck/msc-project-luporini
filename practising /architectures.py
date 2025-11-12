@@ -154,6 +154,7 @@ class TinyConvClassifier(nn.Module):
         fake_output = self.encoder(fake_data)
         fake_shape = fake_output.shape
         flat = fake_shape[1]*fake_shape[2]*fake_shape[3]
+        
         self.classifier_head = nn.Sequential(
             nn.Flatten(),
             nn.Linear(flat, self._classes)
