@@ -103,11 +103,14 @@ class GeneticAlgorithm():
                 flat1, flat2 = flatten(parent1), flatten(parent2)
                 child1, child2 = crossover(flat1, flat2)
 
+                # if random.random() < m_prob:
+                #     child1 = mutate(child1)
+                # if random.random() < m_prob:
+                #     child2 = mutate(child2)
+                
                 # do I want children to always mutate⁉️
-                if random.random() < m_prob:
-                    child1 = mutate(child1)
-                if random.random() < m_prob:
-                    child2 = mutate(child2)
+                child1 = mutate(child1)
+                child2 = mutate(child2)
 
                 child1 = remodel(child1, deepcopy(self._model))
                 child2 = remodel(child2, deepcopy(self._model))
