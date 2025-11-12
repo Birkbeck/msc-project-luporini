@@ -3,6 +3,7 @@ import random
 
 import torch
 from torch import nn
+from torch.utils.data import DataLoader, Subset
 
 def flatten(model):
     """
@@ -89,7 +90,59 @@ def crossover(parent1, parent2, type="uniform"):
 #     return fitness
 
 
-def the_fitness(loader, problem="AE"):
+# def the_fitness(loader, problem="AE"):
+#     """
+#     returns a fitness function that computes 1/avg_loss = avg_fitness
+#     across batches given a model
+
+#     Args:
+#         problem: either "regression", "classification" or default (AE).
+#     """
+#     if problem == "regression":
+#         def fitness(model):
+#             loss_fn = nn.MSELoss()
+#             model.eval()
+#             with torch.no_grad():
+#                 tot_loss = 0
+#                 for X, y in loader:
+#                     pred = model(X)
+#                     loss = loss_fn(pred, y)
+#                     tot_loss += loss.item()
+#                 avg_loss = tot_loss / len(loader) # enumerate starts from 0
+#                 avg_fitness = 1 / (avg_loss + 1e-8)
+#             return avg_fitness
+    
+#     elif problem == "classification":
+#         def fitness(model):
+#             loss_fn = nn.CrossEntropyLoss()
+#             model.eval()
+#             with torch.no_grad():
+#                 tot_loss = 0
+#                 for X, y in loader:
+#                     pred = model(X)
+#                     loss = loss_fn(pred, y)
+#                     tot_loss += loss.item()
+#                 avg_loss = tot_loss / len(loader) # enumerate starts from 0
+#                 avg_fitness = 1 / (avg_loss + 1e-8)
+#             return avg_fitness
+#     else:
+#         def fitness(model):
+#             loss_fn = nn.MSELoss()
+#             model.eval()
+#             with torch.no_grad():
+#                 tot_loss = 0
+#                 for X, _ in loader:
+#                     pred = model(X)
+#                     loss = loss_fn(pred, X)
+#                     tot_loss += loss.item()
+#                 avg_loss = tot_loss / len(loader) # enumerate starts from 0
+#                 avg_fitness = 1 / (avg_loss + 1e-8)
+#             return avg_fitness
+    
+#     return fitness
+
+
+def the_fitness(data: DataLoader, problem="AE"):
     """
     returns a fitness function that computes 1/avg_loss = avg_fitness
     across batches given a model
@@ -98,45 +151,27 @@ def the_fitness(loader, problem="AE"):
         problem: either "regression", "classification" or default (AE).
     """
     if problem == "regression":
-        def fitness(model):
-            loss_fn = nn.MSELoss()
-            model.eval()
-            with torch.no_grad():
-                tot_loss = 0
-                for X, y in loader:
-                    pred = model(X)
-                    loss = loss_fn(pred, y)
-                    tot_loss += loss.item()
-                avg_loss = tot_loss / len(loader) # enumerate starts from 0
-                avg_fitness = 1 / (avg_loss + 1e-8)
-            return avg_fitness
-    
+        loss_fn = nn.MSELoss()
+        out = lambda X, y: y
     elif problem == "classification":
-        def fitness(model):
-            loss_fn = nn.CrossEntropyLoss()
-            model.eval()
-            with torch.no_grad():
-                tot_loss = 0
-                for X, y in loader:
-                    pred = model(X)
-                    loss = loss_fn(pred, y)
-                    tot_loss += loss.item()
-                avg_loss = tot_loss / len(loader) # enumerate starts from 0
-                avg_fitness = 1 / (avg_loss + 1e-8)
-            return avg_fitness
+        loss_fn = nn.CrossEntropyLoss()
+        out = lambda X, y: y
     else:
-        def fitness(model):
-            loss_fn = nn.MSELoss()
-            model.eval()
-            with torch.no_grad():
-                tot_loss = 0
-                for X, _ in loader:
-                    pred = model(X)
-                    loss = loss_fn(pred, X)
-                    tot_loss += loss.item()
-                avg_loss = tot_loss / len(loader) # enumerate starts from 0
-                avg_fitness = 1 / (avg_loss + 1e-8)
-            return avg_fitness
+        loss_fn = nn.MSELoss()
+        out = lambda X, y: X
+    
+    def fitness(model):
+        model.eval()
+        with torch.no_grad():
+            tot_loss = 0
+            for X, y in data:
+                X, y = X, out(X, y)
+                pred = model(X)
+                loss = loss_fn(pred, y)
+                tot_loss += loss.item()
+            avg_loss = tot_loss / len(data) # enumerate starts from 0
+            avg_fitness = 1 / (avg_loss + 1e-8)
+        return avg_fitness
     
     return fitness
 
@@ -154,8 +189,8 @@ class GeneticAlgorithm():
             self,
             model,
             pop_size,
-            fit_fn,
-            data
+            fit_fn=the_fitness,
+            data: DataLoader
     ):
         self._model = model
         self._pop_size = pop_size
@@ -174,7 +209,6 @@ class GeneticAlgorithm():
             generations: number of generations
             report_jump: integer n, with report given every n generations
         """
-
         for i in range(generations):
             parent_fitnesses = fitness(self._population, self._fit_fn)
             parents = list(zip(self._population, parent_fitnesses))
