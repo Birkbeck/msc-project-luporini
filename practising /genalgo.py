@@ -115,11 +115,12 @@ class GeneticAlgorithm():
             model,
             pop_size,
             data:DataLoader,
-            fit_fn=model_fitness # returns a function when instantiated
+            fit_fn=model_fitness, # returns a function when instantiated
+            problem="AE"
     ):
         self._model = model
         self._pop_size = pop_size
-        self._fit_fn = fit_fn(data) #model_fitness is HIGHER ORDER
+        self._fit_fn = fit_fn(data, problem=problem) #model_fitness is HIGHER ORDER
         self._data = data
         self._population = [deepcopy(model) for i in range(self._pop_size)]
         self._fitnesses = [None for i in range(self._pop_size)]
@@ -169,7 +170,7 @@ class GeneticAlgorithm():
             self._fitnesses = [f for _, f in sorted_whole[:self._pop_size]]
 
             if (i+1) % report_jump == 0:
-                print(f"{i+1}th generationn | avg. population finess: {self.avg_fitness()}")
+                print(f"{i+1}th gen | avg. population finess: {self.avg_fitness()}")
 
 
     def avg_fitness(self):
