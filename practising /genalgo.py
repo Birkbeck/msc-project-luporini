@@ -29,6 +29,7 @@ def mutate(guy:torch.Tensor, m_chance=0.05, mode="small", m_rate=0.3) -> torch.T
     randomly mutate parameters in a 1D tensor
 
     args:
+        guy: flat tensor
         m_chance: chance of mutation in "small" mode - mutatate if rand below m_chance
         mode: either "50/50", where half of the genes mutate on avg. or else, where #mutation depends on m_chance
         m_rate: scaling factor for mutation strength
@@ -43,9 +44,19 @@ def mutate(guy:torch.Tensor, m_chance=0.05, mode="small", m_rate=0.3) -> torch.T
         mask = torch.rand_like(guy) < m_chance
         strength = torch.randn_like(guy)
         mutation = m_rate * mask * strength
+    
     return guy + mutation
 
 
+def crossover(parent1, parent2):
+    """
+    uniform crossover between two flat 1D tensors
+    """
+    mask = torch.randint_like(parent1, 2)
+    child1 = torch.where(mask, parent1, parent2)
+    child2 = torch.where(mask, parent2, parent1)
+    
+    return child1, child2
 
 
 mymodel = nn.Linear(3, 2, bias=True) # model, not a tensor!!!
