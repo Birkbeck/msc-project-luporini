@@ -67,7 +67,7 @@ def crossover(parent1, parent2, type="uniform"):
     return child1, child2
 
 
-def the_fitness(data: DataLoader, problem="AE"):
+def model_fitness(data: DataLoader, problem="AE"):
     """
     returns a fitness function that computes 1/avg_loss = avg_fitness
     across batches given a model
@@ -101,7 +101,7 @@ def the_fitness(data: DataLoader, problem="AE"):
     return fitness
 
 
-def fitness(pop:list, fn):
+def population_fitness(pop:list, fn):
     """
     given a model pop and a fitness function, return list of fitnesses for each model
     """
@@ -114,8 +114,8 @@ class GeneticAlgorithm():
             self,
             model,
             pop_size,
-            fit_fn=the_fitness,
-            data: DataLoader
+            data:DataLoader,
+            fit_fn=model_fitness
     ):
         self._model = model
         self._pop_size = pop_size
@@ -135,7 +135,7 @@ class GeneticAlgorithm():
             report_jump: integer n, with report given every n generations
         """
         for i in range(generations):
-            parent_fitnesses = fitness(self._population, self._fit_fn)
+            parent_fitnesses = population_fitness(self._population, self._fit_fn)
             parents = list(zip(self._population, parent_fitnesses))
             
             children = []
