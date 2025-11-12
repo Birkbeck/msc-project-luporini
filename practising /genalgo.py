@@ -1,3 +1,6 @@
+from copy import deepcopy
+import random
+
 import torch
 from torch import nn
 
@@ -63,4 +66,66 @@ def crossover(parent1, parent2, type="uniform"):
     return child1, child2
 
 
+def fitness(pop:list, fn):
+    """
+    given a model pop and a fitness function, return list of fitnesses for each model
+    """
+    return [fn(i) for i in pop]
+
+class GeneticAlgorithm():
+
+
+    def __init__(
+            self,
+            model,
+            pop_size,
+            fit_fn,
+            data
+    ):
+        self._model = model
+        self._pop_size = pop_size
+        self._fit_fn = fit_fn
+        self._data = data
+        self._population = [deepcopy(model) for i in range(self._pop_size)]
+        self._fitnesses = [None for i in range(self._pop_size)]
+        
+    def evolve(self, m_prob=0.3, generations=5): # ⁉️
+
+        for i in range(generations):
+            parent_fitnesses = fitness(self._population, self._fit_fn)
+            parents = list(zip(self._population, parent_fitnesses))
+            
+            children = []
+            for tournament in range(self._pop_size//2):
+                pool = random.sample(parents, k=self._pop_size//2)
+                sorted_pool = sorted(pool, key=lambda x: x[1], reverse=True)
+                parent1, parent2 = sorted_pool[0][0], sorted_pool[1][0]
+                flat1, flat2 = flatten(parent1), flatten(parent2)
+                child1, child2 = crossover(flat1, flat2)
+
+                # do I want children to always mutate⁉️
+                if random.random() < m_prob:
+                    child1 = mutate(child1)
+                if random.random() < m_prob:
+                    child2 = mutate(child2)
+
+                child1 = remodel(child1, deepcopy(self._model))
+                child2 = remodel(child2, deepcopy(self._model))
+                
+                children.extend([child1, child2])
+
+            children_fitnesses = fitness(children, self._fit_fn)
+            children = list(zip(children, children_fitnesses))
+            whole = parents + children
+            sorted_whole = sorted(whole, key=lambda x: x[1], reverse=True)
+
+            self._population = [m for m, _ in sorted_whole[:self._pop_size]]
+
+
+
+
+
+
 mymodel = nn.Linear(3, 2, bias=True) # model, not a tensor!!!
+
+
