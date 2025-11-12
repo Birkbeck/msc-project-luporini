@@ -101,7 +101,7 @@ def model_fitness(data: DataLoader, problem="AE"):
     return fitness
 
 
-def population_fitness(pop:list, fn):
+def group_fitness(pop:list, fn):
     """
     given a model pop and a fitness function, return list of fitnesses for each model
     """
@@ -115,11 +115,11 @@ class GeneticAlgorithm():
             model,
             pop_size,
             data:DataLoader,
-            fit_fn=model_fitness
+            fit_fn=model_fitness # returns a function when instantiated
     ):
         self._model = model
         self._pop_size = pop_size
-        self._fit_fn = fit_fn
+        self._fit_fn = fit_fn(data) #model_fitness is HIGHER ORDER
         self._data = data
         self._population = [deepcopy(model) for i in range(self._pop_size)]
         self._fitnesses = [None for i in range(self._pop_size)]
@@ -135,7 +135,7 @@ class GeneticAlgorithm():
             report_jump: integer n, with report given every n generations
         """
         for i in range(generations):
-            parent_fitnesses = population_fitness(self._population, self._fit_fn)
+            parent_fitnesses = group_fitness(self._population, self._fit_fn)
             parents = list(zip(self._population, parent_fitnesses))
             
             children = []
@@ -160,7 +160,7 @@ class GeneticAlgorithm():
                 
                 children.extend([child1, child2])
 
-            children_fitnesses = fitness(children, self._fit_fn)
+            children_fitnesses = group_fitness(children, self._fit_fn)
             children = list(zip(children, children_fitnesses))
             whole = parents + children
             sorted_whole = sorted(whole, key=lambda x: x[1], reverse=True)
