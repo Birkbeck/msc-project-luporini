@@ -1,72 +1,38 @@
 import random
+import time
 from copy import deepcopy
 from collections import defaultdict
 
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-from genalgo import flatten, mutate, model_fitness, group_fitness
+from genalgo import mutate, group_fitness, model_fitness
+from islands import embed, remodel, crossover
 
-def embed(model, biggest): # seed=42???????
-    flat = flatten(model)
-    mu = flat.mean().item()
-    sigma = flat.std().item()
-
-    size = flat.numel()
-    difference = biggest - size
-    if difference % 2 == 0:
-        lx_pad_size = difference // 2
-        rx_pad_size = lx_pad_size
-    else:
-        lx_pad_size = difference // 2
-        rx_pad_size = difference - lx_pad_size
-    
-    # if seed is not None:
-    #     torch.manual_seed(seed)
-    
-    # careful here: every time embed() is called, torch.random introduces randomness
-    lx_padding = torch.normal(mu, sigma, (lx_pad_size,), dtype=flat.dtype)
-    rx_padding = torch.normal(mu, sigma, (rx_pad_size,), dtype=flat.dtype)
-
-    return (
-        torch.cat([lx_padding, flat, rx_padding]), size, model
-    ) # (flat, size, archi) (f, s, a)
-
-
-def remodel(embedded, original_size, model, biggest):
-    difference = biggest - original_size
-    lx = difference // 2
-    flat = embedded[lx:lx + original_size]
-
-    index = 0
-    for param in model.parameters():
+def model_runtime(data: DataLoader):
+    """
+    careful if using on GPU.. operations are asynchronous
+    torch.cuda.synchronise() ⁉️
+    """
+    def speed(model):
+        model.eval()
         with torch.no_grad():
-            n = param.numel()
-            param.copy_(flat[index:index+n].view_as(param))
-            index += n
-    return model
-
-
-# rename to distinguish from crossover() in genalgo?
-def crossover(parent1: torch.Tensor, parent2: torch.Tensor)-> tuple[torch.Tensor, torch.Tensor]:
-    """
-    masked crossover between two flat models:
-    Args:
-       parent1: flat model
-       parent2: flat model
-    """
-    flat1, s, a = parent1[0], parent1[1], parent1[2]
-    flat2 = parent2[0]
-    
-    mask = torch.randint(0, 2, flat1.shape, dtype=torch.bool) # mask with zeroes and ones
-    child1 = (torch.where(mask, flat1, flat2), s, a)
-    child2 = (torch.where(mask, flat2, flat1), s, a)
-
-    return child1, child2
+            start = time.time()
+            for X, _ in data:
+                pred = model(X)
+            finish = time.time()
+            # interval = (finish - start) / len(data)
+            interval = finish - start # just raw time, not avg. (would be too quick?)
+        return interval
+    return speed
 
 class Islands():
     """
-    remember: need the right problem when initialising the Island class!!!
+    multi-objective evolution..
+    obj_1 = classic net optimisation (MSELoss/CrossEntropy)
+    obj_2 = speed
+
+    remember: need the right 'problem' when initialising the Island class!!!
     """
     def __init__(
             self,
@@ -74,19 +40,43 @@ class Islands():
             pop_size,
             data: DataLoader,
             interval=[1, 4], # small interval compared to pop_size? ⛔️ representativeness
-            fit_fn = model_fitness, # just pass the class
             problem = "AE"
     ):
+        self._data = data
         self._pop_size = pop_size
         self._model = model # needs to be a class, not an istance!
-        self._fit_fn = fit_fn(data, problem=problem) #instancing the class
-        self._data = data
         self._population = [deepcopy(model(stride=random.randint(interval[0], interval[1]))) for i in range(pop_size)]
-        self._fitnesses = group_fitness(self._population, self._fit_fn)
+        
+        self._fit_fn_1 = model_fitness(data, problem=problem) #model_fitness is HIGHER ORDER
+        self._fit_fn_2 = None #⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️
+        self._fitnesses_1 = group_fitness(self._population, self._fit_fn_1)
+        self._fitnesses_2 = None #⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️
+        
         self._biggest = max(
             sum(param.numel() for param in m.parameters()) # ⛔️ will change mid run????
             for m in self._population
         )
+
+    def _nsga_selection(
+            self,
+            whole,
+            fitness1,
+            fitness2
+    ):
+        fronts = []
+        dom_counts = []
+        dominated = []
+
+        first_front = []
+
+        return fronts
+    
+    def _dominates(i, j):
+    
+    def _non_dominated_sorting():
+
+    def _crowding_distance(front):
+        return 
     
     def evolve(self, generations=10, report_jump=2, m_prob=0.3):
         for gen in range(generations):
@@ -120,14 +110,17 @@ class Islands():
                 children.extend([child1, child2])
 
             remodelled_children = [remodel(f, s, a, self._biggest) for f, s, a in children]
-            children_fitnesses = group_fitness(remodelled_children, self._fit_fn)
+            children_fitnesses = group_fitness(remodelled_children, self._fit_fn_1)
             all_solutions = self._population + remodelled_children
-            all_fitnesses = self._fitnesses + children_fitnesses
+            all_fitnesses = self._fitnesses_1 + children_fitnesses
             whole = list(zip(all_solutions, all_fitnesses))
+
+
+            # here, nsga_selection⛔️🔥
             sorted_whole = sorted(whole, key=lambda x: x[1], reverse=True)
 
             self._population = [s for s, _ in sorted_whole[:self._pop_size]]
-            self._fitnesses = [f for _, f in sorted_whole[:self._pop_size]]
+            self._fitnesses_1 = [f for _, f in sorted_whole[:self._pop_size]]
 
             current_biggest = max(
                 sum(param.numel() for param in m.parameters()) 
@@ -141,7 +134,7 @@ class Islands():
             
 
     def avg_fitness(self):
-        fitnesses = [i for i in self._fitnesses if i is not None]
+        fitnesses = [i for i in self._fitnesses_1 if i is not None]
         if not fitnesses:
             return None
         return torch.mean(torch.tensor(fitnesses)).item()              
