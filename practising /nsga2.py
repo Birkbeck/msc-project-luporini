@@ -2,6 +2,7 @@ import random
 import time
 from copy import deepcopy
 from collections import defaultdict
+import math
 
 import torch
 from torch import nn
@@ -122,8 +123,38 @@ class NSGA2():
             return fronts
 
 
-        def _crowding_distance(front):
-            return
+        def _crowding_distance(front, objectives:list):
+            """
+            Args:
+                front: a list of idx from the populations
+                objectives: list of o lists, where o == number of objectives 
+                -> objectives[o] == list of fitnesses for ALL solutions in pop
+            """
+            distances = {s: float(0) for s in front}
+
+            for o in range(len(objectives)):
+                sorted_front = sorted(front, key=lambda idx: objectives[o][idx]) # min –> max
+                # each front solution (idx) -> fitnesses[idx]
+                # each front solution is mapped to a fitness
+                # and sorted by it, in order of increasing fitness
+                distances[sorted_front[0]] = math.inf
+                distances[sorted_front[-1]] = math.inf
+
+                mins = objectives[o][sorted_front[0]] # fit_value corresponding a sorted_fron[0]
+                maxs = objectives[o][sorted_front[-1]] # fit_value corresponding a sorted_fron[-1]
+
+                if mins == maxs:
+                    continue
+                
+                for i in range(1, len(front)-1):
+                    higher = objectives[o][sorted_front[i+1]]
+                    lower = objectives[o][sorted_front[i-1]]
+                    gap = (higher - lower)/(maxs - mins) 
+                    distances[sorted_front[i]] += gap
+                    # divide by (max - min) so it makes sense
+                    # to add values from different objectives
+
+            return distances
     
      
     
