@@ -26,11 +26,11 @@ def model_runtime(data: DataLoader):
         return interval
     return speed
 
-class Islands():
+class NSGA2():
     """
-    multi-objective evolution..
+    multi-objective evolution based on Islands + original nsga-ii
     obj_1 = classic net optimisation (MSELoss/CrossEntropy)
-    obj_2 = speed
+    obj_2 = inference speed
 
     remember: need the right 'problem' when initialising the Island class!!!
     """
@@ -60,23 +60,72 @@ class Islands():
     def _nsga_selection(
             self,
             whole,
-            fitness1,
-            fitness2
+            fits1,
+            fits2
     ):
-        fronts = []
-        dom_counts = []
-        dominated = []
-
-        first_front = []
-
-        return fronts
+        def _dominates(i, j):
+            """
+            MAXIMISATION problem: i dominates j if neither fitness worse and at least one better
+            "neither fitness worse" F1i >= F1j AND F2i >= F2j
+            "at least one better" F1i > F1j OR F2i > F2j
+            """
+            return (
+                (fits1[i] >= fits1[j] and fits2[i] >= fits2[j]) and
+                (fits1[i] > fits1[j] or fits2[i] > fits2[j])
+            )
     
-    def _dominates(i, j):
-    
-    def _non_dominated_sorting():
+        def _non_dominated_sorting():
+            """
+            careful:
+            - dom_counts: list of integers (idx = )
+            - dominateds: list of lists (idx = by whom)
+            - dominated: list 
+            """
+            fronts = []
+            dom_counts = []
+            dominateds = []
 
-    def _crowding_distance(front):
-        return 
+            first_front = []
+            dom_count = 0
+            dominated = []
+            for i in range(len(whole)): # for each solution idx in whole
+                for j in range(len(whole)):
+                    if _dominates(i, j):
+                        dominated.append(j)
+                    elif _dominates(j, i):
+                        dom_count += 1
+                if dom_count == 0:
+                    first_front.append(i)
+                
+                dom_counts.append(dom_count)
+                dominateds.append(dominated)
+
+            fronts.append(first_front)
+
+            # a solution is in the next front if,
+            # when current first is not considered (dom_count of underlying
+            # solutions -=1), the solution dom_count == 0
+            current_idx = 0
+            while current_idx < len(fronts) and fronts[current_idx]:
+                next_front = []
+                for p in fronts[current_idx]: # for each p in current front
+                    for q in dominateds[p]: # go to solutions q that p dominates
+                        dom_counts[q] -= 1 # pretend no current front
+                        if dom_counts[q] == 0:
+                            next_front.append(q)
+                
+                if next_front:
+                    fronts.append(next_front)
+                
+                current_idx +=1
+
+            return fronts
+
+
+        def _crowding_distance(front):
+            return
+    
+     
     
     def evolve(self, generations=10, report_jump=2, m_prob=0.3):
         for gen in range(generations):
@@ -113,10 +162,11 @@ class Islands():
             children_fitnesses = group_fitness(remodelled_children, self._fit_fn_1)
             all_solutions = self._population + remodelled_children
             all_fitnesses = self._fitnesses_1 + children_fitnesses
+            
+            # here, nsga_selection⛔️🔥
             whole = list(zip(all_solutions, all_fitnesses))
 
-
-            # here, nsga_selection⛔️🔥
+            # or here?????
             sorted_whole = sorted(whole, key=lambda x: x[1], reverse=True)
 
             self._population = [s for s, _ in sorted_whole[:self._pop_size]]
