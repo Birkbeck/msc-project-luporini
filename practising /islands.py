@@ -89,36 +89,70 @@ class Islands():
         )
     
     def evolve(self, generations=10, report_jump=2, m_prob=0.3):
+        # for gen in range(generations):
+        #     embedded_parents = [embed(m, biggest=self._biggest) for m in self._population]
+            
+        #     islands = defaultdict(list)
+        #     for i in embedded_parents:
+        #         islands[i[1]].append(i)
+
+        #     for i, group in enumerate(islands.values()): # just to check⛔️
+        #         print(f"{i} island: {len(group)} models")
+
+        #     # mating events, either within(more likely) or between(less likely)
+        #     children = [] # TOURNAMENT 🔥
+        #     for _ in range(self._pop_size//2):
+        #         if random.random() < 0.1: # then cross-island crossover
+        #             random_keys = random.sample(list(islands.keys()), k=2)
+        #             key1, key2 = random_keys[0], random_keys[1]
+        #             pool1, pool2 = islands[key1], islands[key2]
+        #             parent1, parent2 = random.choice(pool1), random.choice(pool2)
+        #         else:
+        #             key = random.choice(list(islands.keys()))
+        #             pool = islands[key]
+        #             parents = random.sample(pool, k=2)
+        #             parent1, parent2 = parents[0], parents[1]
+                
+        #         child1, child2 = crossover(parent1, parent2)
+        #         child1 = (mutate(child1[0]), child1[1], child1[2])
+        #         child2 = (mutate(child2[0]), child2[1], child2[2])
+                
+        #         children.extend([child1, child2])
+        ###################################################################
+        # don't need to embed ALL parents ⛔️⛔️⛔️
+        # just embed the two crossover parents 🔥🔥🔥
         for gen in range(generations):
-            embedded_parents = [embed(m, biggest=self._biggest) for m in self._population]
             
             islands = defaultdict(list)
-            for i in embedded_parents:
-                islands[i[1]].append(i)
+            for m in self._population:
+                islands[m.numel()].append(m)
 
-            for i, group in enumerate(islands.values()): # just to check⛔️
+            for i, group in enumerate(islands.values()): # check topology distribution⛔️
                 print(f"{i} island: {len(group)} models")
 
-            # mating events, either within(more likely) or between(less likely)
+            # mating events 🔥
             children = [] # TOURNAMENT 🔥
             for _ in range(self._pop_size//2):
-                if random.random() < 0.1: # then cross-island crossover
+                if random.random() < 0.1: # unlikely cross-species crossover 🔥
                     random_keys = random.sample(list(islands.keys()), k=2)
                     key1, key2 = random_keys[0], random_keys[1]
                     pool1, pool2 = islands[key1], islands[key2]
                     parent1, parent2 = random.choice(pool1), random.choice(pool2)
-                else:
+                    parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
+                else: # regular intraspecies crossover
                     key = random.choice(list(islands.keys()))
                     pool = islands[key]
                     parents = random.sample(pool, k=2)
                     parent1, parent2 = parents[0], parents[1]
+                    parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
                 
                 child1, child2 = crossover(parent1, parent2)
                 child1 = (mutate(child1[0]), child1[1], child1[2])
                 child2 = (mutate(child2[0]), child2[1], child2[2])
                 
                 children.extend([child1, child2])
-
+            
+            ##############################################################
             remodelled_children = [remodel(f, s, a, self._biggest) for f, s, a in children]
             children_fitnesses = group_fitness(remodelled_children, self._fit_fn)
             all_solutions = self._population + remodelled_children
