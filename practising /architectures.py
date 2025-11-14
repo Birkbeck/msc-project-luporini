@@ -105,6 +105,9 @@ class FlexyConvAE(nn.Module):
             nn.Sigmoid()
         )
 
+    def get_stride(self):
+        return self._stride
+    
     def forward(self, data):
         output = self.encoder(data)
         output = self.decoder(output)
@@ -159,6 +162,9 @@ class TinyConvClassifier(nn.Module):
             nn.Flatten(),
             nn.Linear(flat, self._classes)
         )
+
+    def get_stride(self):
+        return self._stride
 
     def forward(self, data):
         output = self.encoder(data)

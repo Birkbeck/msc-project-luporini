@@ -1,10 +1,14 @@
+import sys
 import random
 from copy import deepcopy
 from collections import defaultdict
 
+import numpy as np
+from sklearn.model_selection import train_test_split
+
 import torch
 from torch import nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from genalgo import flatten, mutate, model_fitness, group_fitness
 
 def embed(model, biggest): # seed=42???????
@@ -24,7 +28,7 @@ def embed(model, biggest): # seed=42???????
     # if seed is not None:
     #     torch.manual_seed(seed)
     
-    # careful here: every time embed() is called, torch.random introduces randomness
+    # careful here⛔️: every time embed() is called, torch.random introduces randomness
     lx_padding = torch.normal(mu, sigma, (lx_pad_size,), dtype=flat.dtype)
     rx_padding = torch.normal(mu, sigma, (rx_pad_size,), dtype=flat.dtype)
 
@@ -66,29 +70,49 @@ def crossover(parent1: torch.Tensor, parent2: torch.Tensor)-> tuple[torch.Tensor
 
 class Islands():
     """
-    remember: need the right problem when initialising the Island class!!!
+    remember:
+        - initialise_islands????
+        - initialise_fitness????
+        - need the right problem when initialising the Island class!!!
+
+    class attributes:
+        pop_size: integer for pop size
+        model: model class
+        data: raw image data... getting random subset every generation
+        interval: integer for the interval within which the varying model parameter can fall
     """
+    def _initialise_islands(self):
+        for m in self._population:
+            key = m.get_stride()
+            self._islands[key].append(m)
+    
+    def _initialise_fitness(self):
+        self._fitness = group_fitness(self._population, self._fit_fn)
+
     def __init__(
             self,
-            model,
             pop_size,
-            data: DataLoader,
+            model,
+            data,
             interval=[1, 4], # small interval compared to pop_size? ⛔️ representativeness
             fit_fn = model_fitness, # just pass the class
             problem = "AE"
     ):
+        self._islands = defaultdict(list)
         self._pop_size = pop_size
         self._model = model # needs to be a class, not an istance!
-        self._fit_fn = fit_fn(data, problem=problem) #instancing the class
+        self._fit_fn = fit_fn#(data, problem=problem) #instancing the class
+        self._problem = problem
+        
         self._data = data
         self._population = [deepcopy(model(stride=random.randint(interval[0], interval[1]))) for i in range(pop_size)]
-        self._fitnesses = group_fitness(self._population, self._fit_fn)
+        self._fitnesses = None
         self._biggest = max(
             sum(param.numel() for param in m.parameters()) # ⛔️ will change mid run????
             for m in self._population
         )
     
-    def evolve(self, generations=10, report_jump=2, m_prob=0.3):
+    def evolve(self, generations=10, subset_fraction=0.1, report_jump=2, m_prob=0.3):
         # for gen in range(generations):
         #     embedded_parents = [embed(m, biggest=self._biggest) for m in self._population]
             
@@ -123,25 +147,40 @@ class Islands():
         # just embed the two crossover parents 🔥🔥🔥
         for gen in range(generations):
             
-            islands = defaultdict(list)
-            for m in self._population:
-                islands[m.numel()].append(m)
+            # subset_size = int(len(self._data)*subset_fraction)
+            # indices = list(range(self._data))
+            # random.shuffle(indices)
+            # random_indices = indices[:subset_size]
+            
+            # BUT NEEDS STRATIFYING ⛔️ TRAIN_TEST_SPLIT 🔥
+            full_idxs = list(range(len(self._data)))
+            labels = self._data.targets.numpy()
+            random_indices, _ = train_test_split(full_idxs, train_size=subset_fraction, stratify=labels)
+            subset = Subset(self._data, indices=random_indices)
 
-            for i, group in enumerate(islands.values()): # check topology distribution⛔️
+            train_loader = DataLoader(subset, batch_size=30)
+            fit_fn = self._fit_fn(train_loader, self._problem)
+
+            # initialise self._fitnesses coz can't add list + None later
+            if gen == 0:
+                self._fitnesses = group_fitness(self._population, fit_fn)
+
+            for i, group in enumerate(self._islands.values()): # check topology distribution⛔️
                 print(f"{i} island: {len(group)} models")
 
+            # sys.exit()
             # mating events 🔥
             children = [] # TOURNAMENT 🔥
             for _ in range(self._pop_size//2):
                 if random.random() < 0.1: # unlikely cross-species crossover 🔥
-                    random_keys = random.sample(list(islands.keys()), k=2)
+                    random_keys = random.sample(list(self._islands.keys()), k=2)
                     key1, key2 = random_keys[0], random_keys[1]
-                    pool1, pool2 = islands[key1], islands[key2]
+                    pool1, pool2 = self._islands[key1], self._islands[key2]
                     parent1, parent2 = random.choice(pool1), random.choice(pool2)
                     parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
                 else: # regular intraspecies crossover
-                    key = random.choice(list(islands.keys()))
-                    pool = islands[key]
+                    key = random.choice(list(self._islands.keys()))
+                    pool = self._islands[key]
                     parents = random.sample(pool, k=2)
                     parent1, parent2 = parents[0], parents[1]
                     parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
@@ -154,7 +193,7 @@ class Islands():
             
             ##############################################################
             remodelled_children = [remodel(f, s, a, self._biggest) for f, s, a in children]
-            children_fitnesses = group_fitness(remodelled_children, self._fit_fn)
+            children_fitnesses = group_fitness(remodelled_children, fit_fn)
             all_solutions = self._population + remodelled_children
             all_fitnesses = self._fitnesses + children_fitnesses
             whole = list(zip(all_solutions, all_fitnesses))
@@ -162,6 +201,8 @@ class Islands():
 
             self._population = [s for s, _ in sorted_whole[:self._pop_size]]
             self._fitnesses = [f for _, f in sorted_whole[:self._pop_size]]
+
+            self._initialise_islands()
 
             current_biggest = max(
                 sum(param.numel() for param in m.parameters()) 
