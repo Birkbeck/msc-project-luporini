@@ -96,13 +96,13 @@ class Islands():
             model,
             data,
             interval=[1, 4], # small interval compared to pop_size? ⛔️ representativeness
-            fit_fn = model_fitness, # just pass the class
+            # fit_fn = , # just pass the class
             problem = "AE"
     ):
         self._islands = None
         self._pop_size = pop_size
         self._model = model # needs to be a class, not an istance!
-        self._fit_fn = fit_fn#(data, problem=problem) #instancing the class
+        self._fit_fn = model_fitness#(data, problem=problem) #instancing the class
         self._problem = problem
         
         self._data = data

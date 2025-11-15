@@ -8,7 +8,7 @@ from torchvision import transforms
 from torchvision.datasets import MNIST
 from torch.utils.data import DataLoader, Subset
 from architectures import FlexyConvAE
-import islands
+import nsga2
 
 mytransform = transforms.ToTensor()
 
@@ -20,23 +20,8 @@ test_data = MNIST("./datasets", download=False, train=False, transform=mytransfo
 train_loader = DataLoader(train_data, batch_size=30)
 test_loader = DataLoader(test_data, batch_size=30)
 
-########################################
-########################################
-# print(len(train_data))
-# print(train_data[0])
 
-# images = 5
-# fig, axes = plt.subplots(nrows=1, ncols=images, figsize=(5, 5))
-
-# for i in range(images):
-#     img, _ = train_data[i]
-#     axes[i].imshow(img, cmap="gray")
-
-# plt.show()
-########################################
-########################################
-
-evolution = islands.Islands(
+evolution = nsga2.NSGA2(
     pop_size=50,
     model=FlexyConvAE,
     interval=[1, 7],
@@ -44,6 +29,7 @@ evolution = islands.Islands(
 )
 
 
+# still need to initialise islands...
 print("defining islands...")
 evolution._initialise_islands()
 print(evolution._islands.keys())

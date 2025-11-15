@@ -5,9 +5,10 @@ from collections import defaultdict
 import math
 
 import numpy as np
+from sklearn.model_selection import train_test_split
 import torch
 from torch import nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from genalgo import mutate, group_fitness, model_fitness
 from islands import embed, remodel, crossover
 
@@ -42,25 +43,38 @@ class NSGA2():
     obj_1 = classic net optimisation (MSELoss/CrossEntropy)
     obj_2 = inference speed
 
-    remember: need the right 'problem' when initialising the Island class!!!
+    remember:
+        - initialise islands????????
+        - need the right 'problem' when initialising the Island class!!!
     """
+    def _initialise_islands(self):
+        self._islands = defaultdict(list)
+        for m in self._population:
+            key = m.get_stride()
+            self._islands[key].append(m)
+    
+    def _initialise_fitness(self):
+        self._fitness = group_fitness(self._population, self._fit_fn)
+    
     def __init__(
             self,
-            model,
             pop_size,
-            data: DataLoader,
+            model,
+            data,
             interval=[1, 4], # small interval compared to pop_size? ⛔️ representativeness
             problem = "AE"
     ):
+        self._islands = None
         self._data = data
         self._pop_size = pop_size
         self._model = model # needs to be a class, not an istance!
+        self._problem = problem
         self._population = [deepcopy(model(stride=random.randint(interval[0], interval[1]))) for i in range(pop_size)]
         
-        self._fit_fn_1 = model_fitness(data, problem=problem) #model_fitness is HIGHER ORDER
-        self._fit_fn_2 = model_runtime(data)
-        self._fitnesses_1 = group_fitness(self._population, self._fit_fn_1)
-        self._fitnesses_2 = group_fitness(self._population, self._fit_fn_2)
+        self._fit_fn_1 = model_fitness#(data, problem=problem) #model_fitness is HIGHER ORDER
+        self._fit_fn_2 = model_runtime#(data)
+        self._fitnesses_1 = None
+        self._fitnesses_2 = None
         
         self._biggest = max(
             sum(param.numel() for param in m.parameters()) # ⛔️ will change mid run????
@@ -68,7 +82,7 @@ class NSGA2():
         )
 
     
-    def nsga_selection(self, generations=10, report_jump=2, m_prob=0.3):
+    def evolve(self, generations=10, subset_fraction=0.1, report_jump=2, m_prob=0.3):
         
         # HELPER FUNCTION
         def _non_dominated_sorting(whole, fits1, fits2):
@@ -165,16 +179,30 @@ class NSGA2():
 
             return distances
         
-        # EVOLUTION LOOP
+        ##################
+        # EVOLUTION LOOP #
+        ##################
         for gen in range(generations):
-            embedded_parents = [embed(m, biggest=self._biggest) for m in self._population]
-            
-            islands = defaultdict(list)
-            for i in embedded_parents:
-                islands[i[1]].append(i)
 
-            for i, group in enumerate(islands.values()): # just to check⛔️
-                print(f"{i} island: {len(group)} models")
+            full_idxs = list(range(len(self._data)))
+            labels = self._data.targets.numpy()
+            random_indices, _ = train_test_split(full_idxs, train_size=subset_fraction, stratify=labels)
+            subset = Subset(self._data, indices=random_indices)
+
+            train_loader = DataLoader(subset, batch_size=30)
+            fit_fn_1 = self._fit_fn_1(train_loader, self._problem)
+            fit_fn_2 = self._fit_fn_2(train_loader)
+
+            # initialise self._fitnesses coz can't add list + None later
+            if gen == 0:
+                self._fitnesses_1 = group_fitness(self._population, fit_fn_1)
+                self._fitnesses_2 = group_fitness(self._population, fit_fn_2)
+
+            # checking topologies.. changing through generations ⁉️
+            for key, value in self._islands.items():
+                print(f"{key}: {len(value)} models")
+            print(f"\npopulation size: {self._pop_size}")
+            
 
             # mating events, either within(more likely) or between(less likely)
             children = [] # TOURNAMENT 🔥
