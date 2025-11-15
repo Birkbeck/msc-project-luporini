@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Subset
-from genalgo import flatten, mutate, model_fitness, group_fitness
+from genalgo import flatten, mutate, model_fitness, group_fitness, normalise_fitness
 
 def embed(model, biggest): # seed=42???????
     flat = flatten(model)

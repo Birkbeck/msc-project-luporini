@@ -5,11 +5,12 @@ from collections import defaultdict
 import math
 
 import numpy as np
+from matplotlib import pyplot as plt
 from sklearn.model_selection import train_test_split
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Subset
-from genalgo import mutate, group_fitness, model_fitness
+from genalgo import mutate, group_fitness, model_fitness, normalise_fitness
 from islands import embed, remodel, crossover
 
 def model_runtime(data: DataLoader):
@@ -180,20 +181,16 @@ class NSGA2():
             return distances
         
         # HELPER FUNCTIONS for evaluation metrics: convergence + spread
-        def _convergence():
+        # def _convergence():
         
-        def _spread()
-        ##################
-        # EVOLUTION LOOP #
-        ##################
+        # def _spread()
+        #####################
+        #🔥 EVOLUTION LOOP 🔥#
+        #####################
+        fig, axes = plt.subplots(nrows=generations, ncols=1, figsize=(10, 10))
+        axes = np.atleast_1d(axes) # or else: if 1 gen, axex not subscriptable!!!!!! 
+
         for gen in range(generations):
-            # if first gen:
-            # initialise self._islands
-            # initialise self._fitnesses coz can't add list + None later
-            if gen == 0:
-                self._initialise_islands()
-                self._fitnesses_1 = group_fitness(self._population, fit_fn_1)
-                self._fitnesses_2 = group_fitness(self._population, fit_fn_2)
 
             full_idxs = list(range(len(self._data)))
             labels = self._data.targets.numpy()
@@ -203,6 +200,14 @@ class NSGA2():
             train_loader = DataLoader(subset, batch_size=30)
             fit_fn_1 = self._fit_fn_1(train_loader, self._problem)
             fit_fn_2 = self._fit_fn_2(train_loader)
+
+            # if first gen:
+            # initialise self._islands
+            # initialise self._fitnesses coz can't add list + None later
+            if gen == 0:
+                self._initialise_islands()
+                self._fitnesses_1 = group_fitness(self._population, fit_fn_1)
+                self._fitnesses_2 = group_fitness(self._population, fit_fn_2)
 
             # checking topologies.. changing through generations ⁉️
             for key, value in self._islands.items():
@@ -276,6 +281,14 @@ class NSGA2():
             )
             if current_biggest != self._biggest:
                 self._biggest = current_biggest
-            
+
+            # plotting the current population in 2D fitness landscape
+            normalised_x = normalise_fitness(self._fitnesses_1) # x fitness
+            normalised_y = normalise_fitness(self._fitnesses_2) # y speed
+
+            axes[gen].scatter(x=normalised_x, y=normalised_y)
+            axes[gen].set_aspect("equal", adjustable="box")
+        
+        plt.show()    
             
              

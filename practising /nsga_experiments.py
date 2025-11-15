@@ -22,27 +22,21 @@ test_loader = DataLoader(test_data, batch_size=30)
 
 
 evolution = nsga2.NSGA2(
-    pop_size=50,
+    pop_size=20,
     model=FlexyConvAE,
     interval=[1, 10],
     data=train_data
 )
 
 
-# still need to initialise islands...
-print("defining islands...")
-evolution._initialise_islands()
-print(evolution._islands.keys())
-
-
 start = time.time()
 evolution.evolve(
-    generations=10,
+    generations=1,
     m_prob=0.3
 )
 finish = time.time()
 
 
 print(
-    f"it took || {round(finish - start, 4)} sec to go through a generation"
+    f"it took || {round(finish - start, 4)} sec to go through a run"
 )
