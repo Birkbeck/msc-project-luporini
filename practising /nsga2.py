@@ -207,16 +207,22 @@ class NSGA2():
             # mating events, either within(more likely) or between(less likely)
             children = [] # TOURNAMENT 🔥
             for _ in range(self._pop_size//2):
-                if random.random() < 0.1: # then cross-island crossover
-                    random_keys = random.sample(list(islands.keys()), k=2)
+                if random.random() < 0.1: # unlikely cross-species crossover 🔥
+                    random_keys = random.sample(list(self._islands.keys()), k=2)
                     key1, key2 = random_keys[0], random_keys[1]
-                    pool1, pool2 = islands[key1], islands[key2]
+                    pool1, pool2 = self._islands[key1], self._islands[key2]
                     parent1, parent2 = random.choice(pool1), random.choice(pool2)
-                else:
-                    key = random.choice(list(islands.keys()))
-                    pool = islands[key]
-                    parents = random.sample(pool, k=2)
-                    parent1, parent2 = parents[0], parents[1]
+                    parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
+                else: # regular intraspecies crossover 🔥
+                    key = random.choice(list(self._islands.keys()))
+                    pool = self._islands[key]
+                    if len(pool) == 1:
+                        # parent1, parent2 = pool[0], deepcopy(pool[0])
+                        continue
+                    else:
+                        parents = random.sample(pool, k=2)
+                        parent1, parent2 = parents[0], parents[1]
+                        parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
                 
                 child1, child2 = crossover(parent1, parent2)
                 child1 = (mutate(child1[0]), child1[1], child1[2])
