@@ -232,8 +232,8 @@ class NSGA2():
 
                                     # remodel(f,s,a,biggest)–>model!
             remodelled_children = [remodel(f, s, a, self._biggest) for f, s, a in children]
-            children_fitnesses_1 = group_fitness(remodelled_children, self._fit_fn_1)
-            children_fitnesses_2 = group_fitness(remodelled_children, self._fit_fn_2)
+            children_fitnesses_1 = group_fitness(remodelled_children, fit_fn_1)
+            children_fitnesses_2 = group_fitness(remodelled_children, fit_fn_2)
             all_solutions = self._population + remodelled_children
             all_fitnesses_1 = self._fitnesses_1 + children_fitnesses_1
             all_fitnesses_2 = self._fitnesses_2 + children_fitnesses_2
