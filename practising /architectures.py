@@ -26,6 +26,33 @@ class TinyAE(nn.Module):
         output = self.encoder(data)
         output = self.decoder(output)
         return output
+    
+
+class TinyFlexyAE(nn.Module):
+    """
+    Super simple auto encoder architecture for flat in/out configurations.
+    
+    Args: self-explanatory✨
+    """
+    def __init__(self, input, latent, nonlinearity=nn.ReLU):
+        self._input = input
+        self._latent = latent
+        self._nonl = nonlinearity
+
+        self.encoder = nn.Sequential(
+            nn.Linear(self._input, self._latent),
+            self._nonl()
+        )
+
+        self.decoder = nn.Sequential(
+            nn.Linear(self._latent, self._input),
+            nn.Sigmoid()
+        )
+
+    def forward(self, data):
+        output = self.encoder(data)
+        output = self.decoder(output)
+        return output
 
 
 class TinyConvAE(nn.Module):
