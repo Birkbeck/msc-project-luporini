@@ -24,7 +24,7 @@ test_loader = DataLoader(test_data, batch_size=30)
 evolution = nsga2.NSGA2(
     pop_size=50,
     model=FlexyConvAE,
-    interval=[1, 7],
+    interval=[1, 10],
     data=train_data
 )
 
