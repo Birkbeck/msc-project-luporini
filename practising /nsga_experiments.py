@@ -37,7 +37,8 @@ print(evolution._islands.keys())
 
 start = time.time()
 evolution.evolve(
-    generations=5
+    generations=10,
+    m_prob=0.3
 )
 finish = time.time()
 

@@ -79,8 +79,8 @@ def model_fitness(data: DataLoader, problem="AE"):
         loss_fn = nn.MSELoss()
         out = lambda X, y: y
     elif problem == "classification":
-        loss_fn = nn.CrossEntropyLoss()
-        out = lambda X, y: y
+        loss_fn = nn.CrossEntropyLoss() # expect logits, y.shape((batch,))
+        out = lambda X, y: y        # if working with encodings, will break!
     else:
         loss_fn = nn.MSELoss()
         out = lambda X, y: X

@@ -179,6 +179,10 @@ class NSGA2():
 
             return distances
         
+        # HELPER FUNCTIONS for evaluation metrics: convergence + spread
+        def _convergence():
+        
+        def _spread()
         ##################
         # EVOLUTION LOOP #
         ##################
@@ -274,10 +278,4 @@ class NSGA2():
                 self._biggest = current_biggest
             
             
-            
-
-    def avg_fitnesses(self):
-        fitnesses = [i for i in self._fitnesses_1 if i is not None]
-        if not fitnesses:
-            return None
-        return np.mean(fitnesses)              
+             
