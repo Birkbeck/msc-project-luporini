@@ -7,7 +7,7 @@ import torch
 from torchvision import transforms
 from torchvision.datasets import MNIST
 from torch.utils.data import DataLoader, Subset
-from architectures import FlexyConvAE
+from architectures import TinyFlexyConvAE, FlexyConvAE
 import nsga2
 
 mytransform = transforms.ToTensor()
@@ -22,8 +22,8 @@ test_loader = DataLoader(test_data, batch_size=30)
 
 
 evolution = nsga2.NSGA2(
-    pop_size=20,
-    model=FlexyConvAE,
+    pop_size=50,
+    model=TinyFlexyConvAE,
     interval=[1, 10],
     data=train_data
 )
@@ -31,7 +31,7 @@ evolution = nsga2.NSGA2(
 
 start = time.time()
 evolution.evolve(
-    generations=1,
+    generations=5,
     m_prob=0.3
 )
 finish = time.time()

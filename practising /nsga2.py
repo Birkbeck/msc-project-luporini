@@ -210,9 +210,10 @@ class NSGA2():
                 self._fitnesses_2 = group_fitness(self._population, fit_fn_2)
 
             # checking topologies.. changing through generations ⁉️
-            for key, value in self._islands.items():
+            for key in sorted(self._islands):
+                value = self._islands[key]
                 print(f"{key}: {len(value)} models")
-            print(f"\npopulation size: {self._pop_size}")
+            print(f"\nwith {self._pop_size} individuals total")
             
 
             # mating events, either within(more likely) or between(less likely)
@@ -285,8 +286,9 @@ class NSGA2():
             # plotting the current population in 2D fitness landscape
             normalised_x = normalise_fitness(self._fitnesses_1) # x fitness
             normalised_y = normalise_fitness(self._fitnesses_2) # y speed
+            colour = [m._stride for m in self._population] # ⁉️
 
-            axes[gen].scatter(x=normalised_x, y=normalised_y)
+            axes[gen].scatter(x=normalised_x, y=normalised_y, c=colour) # ⁉️
             axes[gen].set_aspect("equal", adjustable="box")
         
         plt.show()    
