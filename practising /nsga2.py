@@ -262,6 +262,8 @@ class NSGA2():
             self._fitnesses_1 = [all_fitnesses_1[s] for s in solutions]
             self._fitnesses_2 = [all_fitnesses_2[s] for s in solutions]
 
+            self._initialise_islands()
+            
             current_biggest = max(
                 sum(param.numel() for param in m.parameters()) 
                 for m in self._population
@@ -269,8 +271,7 @@ class NSGA2():
             if current_biggest != self._biggest:
                 self._biggest = current_biggest
             
-            # if (i+1) % report_jump == 0: #⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
-            print(f"{gen+1}th gen | avg. population finess: {self.avg_fitness()}")
+            
             
 
     def avg_fitnesses(self):
