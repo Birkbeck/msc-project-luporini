@@ -36,39 +36,25 @@ test_loader = DataLoader(test_data, batch_size=30)
 ########################################
 ########################################
 
-start = time.time()
 evolution = islands.Islands(
     pop_size=20,
     model=FlexyConvAE,
     data=train_data
 )
-finish = time.time()
-print(
-    f"it took || {round(finish - start, 4)} sec || {round((finish - start)/60)} min"
-)
+
 
 print("defining islands...")
 evolution._initialise_islands()
-print(f"there are {len(evolution._islands.keys())} islands")
-for key, value in evolution._islands.items():
-    print(f"for stride {key} there are {len(value)} models")
 print(evolution._islands.keys())
 
-start = time.time()
-print("initialising fitnesses")
-evolution._initialise_fitness
-print("fitnesses were initialised!!!")
-finish = time.time()
-print(
-    f"it took || {round(finish - start, 4)} sec || {round((finish - start)/60)} min to initialise fitnesses"
-)
 
 start = time.time()
 evolution.evolve(
-    generations=1
+    generations=5
 )
 finish = time.time()
 
+
 print(
-    f"it took || {round(finish - start, 4)} sec || {round((finish - start)/60)} min to go through a generation"
+    f"it took || {round(finish - start, 4)} sec to go through a generation"
 )
