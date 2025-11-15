@@ -93,9 +93,9 @@ def model_fitness(data: DataLoader, problem="AE"):
                 X, y = X, out(X, y)
                 pred = model(X)
                 loss = loss_fn(pred, y)
-                tot_loss += loss.item()
+                tot_loss += loss.item()   # ⛔️SPIKING FITNESS if avg_loss very small
             avg_loss = tot_loss / len(data) # enumerate starts from 0
-            avg_fitness = 1 / (avg_loss + 1e-8)
+            avg_fitness = 1 / (avg_loss + 1e-8) # if avg_loss–>0, avg_fit–>inf!!
         return avg_fitness
     
     return fitness
@@ -106,6 +106,21 @@ def group_fitness(pop:list, fn):
     given a model pop and a fitness function, return list of fitnesses for each model
     """
     return [fn(i) for i in pop]
+
+
+def normalise_fitness(fitnesses: list):
+    """
+    normalises fitnesses between 0 and 1
+    normalised_f = (f - min)/(max - min) 
+    """
+    mino = min(fitnesses)
+    maxo = max(fitnesses)
+    deno = (maxo - mino + 1e-8)
+    normalised_fitnesses = [
+        (f - mino) / deno
+        for f in fitnesses
+    ]
+    return normalised_fitnesses
 
 class GeneticAlgorithm():
 
