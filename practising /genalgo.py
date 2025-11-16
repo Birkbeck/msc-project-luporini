@@ -108,13 +108,11 @@ def group_fitness(pop:list, fn):
     return [fn(i) for i in pop]
 
 
-def normalise_fitness(fitnesses: list):
+def normalise_fitness(fitnesses: list, mino, maxo):
     """
     normalises fitnesses between 0 and 1
     normalised_f = (f - min)/(max - min) 
     """
-    mino = min(fitnesses)
-    maxo = max(fitnesses)
     deno = (maxo - mino + 1e-8)
     normalised_fitnesses = [
         (f - mino) / deno

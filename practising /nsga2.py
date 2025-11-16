@@ -132,6 +132,7 @@ def crowding_distance(front, *objectives):
 
     return distances
 
+def empirical_bounds()
 
 # HELPER FUNCTIONS for evaluation convergence and spread⛔️
 # def _convergence(fit1, fit2): # in 2D.. don't need more
@@ -144,6 +145,8 @@ def convergence(*fits):
 
         
 # def spread()
+
+
 
 
 class NSGA2():
@@ -165,6 +168,31 @@ class NSGA2():
     def _initialise_fitness(self):
         self._fitness = group_fitness(self._population, self._fit_fn)
     
+    def _estimate_convergence(self):
+        # normalise fitness space between 0, 1 using empirical bounds
+        mino1, maxo1 = self._emp_bounds_1[0], self._emp_bounds_1[1]
+        mino2, maxo2 = self._emp_bounds_2[0], self._emp_bounds_2[1]
+        normalised_x = normalise_fitness(self._fitnesses_1, mino1, maxo1) # x fitness
+        normalised_y = normalise_fitness(self._fitnesses_2, mino2, maxo2) # y speed
+            
+        # getting distance from ideal for each model 
+        distances = [] # and record in self._convergence as pop_avg per gen
+        for i in range(self._pop_size):
+            distances.append(convergence(normalised_x[i], normalised_y[i]))
+        self._convergence.append(distances)
+
+        # finding most balanced model (closest to ideal)
+        zipped = list(zip(self._population, self._convergence))
+        ordered = sorted(zipped, key= lambda x: x[1])
+        best_model, best_convergence = ordered[0]
+        if self._best_model is None or self._best_convergence is None:
+            self._best_model = deepcopy(best_model)
+            self._best_convergence = best_convergence
+        else:
+            if best_convergence < self._best_convergence:
+                self._best_model = deepcopy(best_model)
+                self._best_convergence = best_convergence
+    
     def __init__(
             self,
             pop_size,
@@ -184,11 +212,11 @@ class NSGA2():
         self._fit_fn_2 = model_runtime#(data)
         self._fitnesses_1 = None
         self._fitnesses_2 = None
-        self._convergence = []
+        self._convergence = [] # list of lists: normalised distances per generation
         self._best_model = None
         self._best_convergence = None
-        self._emp_min = None
-        self._emp_max = None
+        self._emp_bounds_1 = None # empirical bounds per objective
+        self._emp_bounds_2 = None
 
         self._biggest = max(
             sum(param.numel() for param in m.parameters()) # ⛔️ will change mid run????
@@ -203,11 +231,15 @@ class NSGA2():
         best = self._best_model
         torch.save(best, filepath)
     
-    def evolve(self, generations=10, subset_fraction=0.07, report_jump=2, m_prob=0.3):
+    def evolve(
+            self,
+            generations=10,
+            bound_estimation=True,
+            subset_fraction=0.07,
+            report_jump=2,        # UNUSED ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
+            m_prob=0.3
+    ):
         
-        _, axes = plt.subplots(nrows=generations, ncols=1, figsize=(10, 10))
-        axes = np.atleast_1d(axes) # or else: if 1 gen, axex not subscriptable!!!!!! 
-
         for gen in range(generations):
 
             full_idxs = list(range(len(self._data)))
@@ -303,38 +335,8 @@ class NSGA2():
                 self._biggest = current_biggest
 
 
-            # normalise fitness space between 0, 1
-            normalised_x = normalise_fitness(self._fitnesses_1) # x fitness
-            normalised_y = normalise_fitness(self._fitnesses_2) # y speed
-            
-            # getting distance from ideal for each model 
-            distances = [] # and record in self._convergence as pop_avg per gen
-            for i in range(self._pop_size):
-                distances.append(convergence(normalised_x[i], normalised_y[i]))
-            self._convergence.append(sum(distances)/len(distances))
-
-            # finding most balanced model (closest to ideal)
-            zipped = list(zip(self._population, self._convergence))
-            ordered = sorted(zipped, key= lambda x: x[1])
-            best_model, best_convergence = ordered[0]
-            if self._best_model is None or self._best_convergence is None:
-                self._best_model = deepcopy(best_model)
-                self._best_convergence = best_convergence
-            else:
-                if best_convergence < self._best_convergence:
-                    self._best_model = deepcopy(best_model)
-                    self._best_convergence = best_convergence
-
-            # plotting the current population in 2D fitness landscape
-            colour = [m._stride for m in self._population] # ⁉️
-
-            axes[gen].scatter(x=normalised_x, y=normalised_y, c=colour) # ⁉️
-            axes[gen].set_aspect("equal", adjustable="box")
-        
-        # SAVING A/MULTIPLE MODELS??
-        # torch.save(best.state_dict(), "best.pth")
-
-
-        plt.show()    
+            if not bound_estimation:
+                self._estimate_convergence()
+ 
             
              
