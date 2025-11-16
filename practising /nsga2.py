@@ -132,13 +132,7 @@ def crowding_distance(front, *objectives):
 
     return distances
 
-# def empirical_bounds()
-
 # HELPER FUNCTIONS for evaluation convergence and spread⛔️
-# def _convergence(fit1, fit2): # in 2D.. don't need more
-#     """model distange from ideal solution"""
-#     return math.sqrt((fit1 - 1)**2 + (fit2 - 1)**2)
-        
 def convergence(*fits):
     """for a model: Euclidean distance from ideal s in nD"""
     return math.sqrt(sum((f - 1)**2 for f in fits))
@@ -168,16 +162,22 @@ class NSGA2():
     def _initialise_fitness(self):
         self._fitness = group_fitness(self._population, self._fit_fn)
     
-    def _normalise_fitnesses(self):
-        # normalise fitness space between 0, 1 using empirical bounds
-        mino1, maxo1 = self._emp_bounds_1[0], self._emp_bounds_1[1]
-        mino2, maxo2 = self._emp_bounds_2[0], self._emp_bounds_2[1]
-        normalised_x = normalise_fitness(self._fitnesses_1, mino1, maxo1) # x fitness
-        normalised_y = normalise_fitness(self._fitnesses_2, mino2, maxo2) # y speed
-        return normalised_x, normalised_y
+    def _bounds_estimation(sel, fitnesses, bound):
+        mino, maxo = min(fitnesses), max(fitnesses)
+        bounds = (min(mino, bound[0]), max(maxo, bound[1]))
+        return bounds
+    
+    # def _normalise_fitnesses(self):
+    #     # normalise fitness space between 0, 1 using empirical bounds
+    #     mino1, maxo1 = self._emp_bounds_1[0], self._emp_bounds_1[1]
+    #     mino2, maxo2 = self._emp_bounds_2[0], self._emp_bounds_2[1]
+    #     normalised_x = normalise_fitness(self._fitnesses_1, mino1, maxo1) # x fitness
+    #     normalised_y = normalise_fitness(self._fitnesses_2, mino2, maxo2) # y speed
+    #     return normalised_x, normalised_y
     
     def _estimate_convergence(self):
-        normalised_x, normalised_y = self._normalise_fitnesses() # y speed
+        normalised_x = normalise_fitness(self._fitnesses_1, self._emp_bounds_1) # x fitness
+        normalised_y = normalise_fitness(self._fitnesses_2, self._emp_bounds_2) # y speed
             
         # getting distance from ideal for each model 
         distances = [] # and record in self._convergence as pop_avg per gen
@@ -186,7 +186,7 @@ class NSGA2():
         self._convergence.append(distances)
 
         # finding most balanced model (closest to ideal)
-        zipped = list(zip(self._population, self._convergence))
+        zipped = list(zip(self._population, distances))
         ordered = sorted(zipped, key= lambda x: x[1])
         best_model, best_convergence = ordered[0]
         if self._best_model is None or self._best_convergence is None:
@@ -219,17 +219,22 @@ class NSGA2():
         self._convergence = [] # list of lists: normalised distances per generation
         self._best_model = None
         self._best_convergence = None
-        self._emp_bounds_1 = None # empirical bounds per objective
-        self._emp_bounds_2 = None
+        self._emp_bounds_1 = (0.0, 0.0) # empirical bounds per objective
+        self._emp_bounds_2 = (0.0, 0.0)
 
         self._biggest = max(
             sum(param.numel() for param in m.parameters()) # ⛔️ will change mid run????
             for m in self._population
         )
 
-    def get_best(self):
+    def get_best_model(self):
         best = self._best_model
         return best
+    
+    def get_avg_convergence(self):
+        """get FINAL population convergence"""
+        avg_convergence = sum(self._convergence[-1])/len(self._pop_size)
+        return avg_convergence
     
     def save_best(self, filepath):
         best = self._best_model
@@ -329,7 +334,9 @@ class NSGA2():
             self._fitnesses_1 = [all_fitnesses_1[s] for s in solutions]
             self._fitnesses_2 = [all_fitnesses_2[s] for s in solutions]
 
+
             self._initialise_islands()
+
 
             current_biggest = max(
                 sum(param.numel() for param in m.parameters()) 
@@ -339,20 +346,30 @@ class NSGA2():
                 self._biggest = current_biggest
 
 
-            if not bound_estimation:
+            if bound_estimation:
+                bounds1 = self._bounds_estimation(self._fitnesses_1, self._emp_bounds_1)
+                bounds2 = self._bounds_estimation(self._fitnesses_2, self._emp_bounds_2)
+                self._emp_bounds_1 = bounds1
+                self._emp_bounds_2 = bounds2
+            else:
                 self._estimate_convergence()
 
-    def plot_evolution(self, nrows, ncols, figsize):
-        norm_x, norm_y = self._normalise_fitnesses()
+
+    # def plot_evolution(self, nrows, ncols, figsize):
+        # """ what the fuck do I want to plot? WHO KNOWS"""
+        # # plotting the current population in 2D fitness landscape
+        # _, axes = plt.subplots(nrows, ncols, figsize)
+        
+        # for i in range(len(self._convergence)):
+        #     # norm_x = normalise_fitness(self._fitnesses_1, self._emp_bounds_1) # x fitness
+        #     # norm_y = normalise_fitness(self._fitnesses_2, self._emp_bounds_2) # y speed
             
-        # plotting the current population in 2D fitness landscape
-        _, axes = plt.subplots(nrows, ncols, figsize)
-        colour = [m._stride for m in self._population] # ⁉️
+        #     avg_conv = sum(self._convergence[i])/len(self._convergence[i])
+        # colour = [m._stride for m in self._population] # ⁉️
+        # axes[i, 0].scatter(x=norm_x, y=norm_y, c=colour) # ⁉️
+        # axes[i, 0].set_aspect("equal", adjustable="box")
 
-        for i in range(self._convergence):
-            axes[i].scatter(x=norm_x, y=norm_y, c=colour) # ⁉️
-            axes[i].set_aspect("equal", adjustable="box")
 
-        plt.show()   
+        # plt.show()   
             
              
