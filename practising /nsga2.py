@@ -38,6 +38,100 @@ def model_runtime(data: DataLoader):
     
     return speed
 
+def non_dominated_sorting(whole, fits1, fits2):
+    """
+    careful:
+    - dom_counts: list of integers (idx = )
+    - dominateds: list of lists (idx = by whom)
+    - dominated: list 
+    """
+    # HELPER FUNCTION
+    def _dominates(i, j):
+        """
+        MAXIMISATION problem: i dominates j if neither fitness worse and at least one better
+        "neither fitness worse" F1i >= F1j AND F2i >= F2j
+        "at least one better" F1i > F1j OR F2i > F2j
+        """
+        return (
+            (fits1[i] >= fits1[j] and fits2[i] >= fits2[j]) and
+            (fits1[i] > fits1[j] or fits2[i] > fits2[j])
+        )
+
+    fronts = []
+    dom_counts = []
+    dominateds = []
+
+    first_front = []
+    for i in range(len(whole)): # for each solution idx in whole
+        dom_count = 0
+        dominated = []
+        for j in range(len(whole)):
+            if _dominates(i, j):
+                dominated.append(j)
+            elif _dominates(j, i):
+                dom_count += 1
+        if dom_count == 0:
+            first_front.append(i)
+
+        dom_counts.append(dom_count)
+        dominateds.append(dominated)
+
+    fronts.append(first_front)
+
+    # a solution is in the next front if,
+    # when current first is not considered (dom_count of underlying
+    # solutions -=1), the solution dom_count == 0
+    current_idx = 0
+    while current_idx < len(fronts) and fronts[current_idx]:
+        next_front = []
+        for p in fronts[current_idx]: # for each p in current front
+            for q in dominateds[p]: # go to solutions q that p dominates
+                dom_counts[q] -= 1 # pretend no current front
+                if dom_counts[q] == 0:
+                    next_front.append(q)
+
+        if next_front:
+            fronts.append(next_front)
+
+        current_idx +=1
+
+    return fronts
+
+# HELPER FUNCTION
+def crowding_distance(front, *objectives):
+    """
+    Args:
+        front: a list of idx from the populations
+        objectives: list of o lists, where o == number of objectives 
+        -> objectives[o] == list of fitnesses for ALL solutions in pop
+    """
+    distances = {s: float(0) for s in front}
+    objectives = [o for o in objectives]
+
+    for o in range(len(objectives)):
+        sorted_front = sorted(front, key=lambda idx: objectives[o][idx]) # min –> max
+        # each front solution (idx) -> fitnesses[idx]
+        # each front solution is mapped to a fitness
+        # and sorted by it, in order of increasing fitness
+        distances[sorted_front[0]] = math.inf
+        distances[sorted_front[-1]] = math.inf
+
+        mins = objectives[o][sorted_front[0]] # fit_value corresponding a sorted_fron[0]
+        maxs = objectives[o][sorted_front[-1]] # fit_value corresponding a sorted_fron[-1]
+
+        if mins == maxs:
+            continue
+  
+        for i in range(1, len(front)-1):
+            higher = objectives[o][sorted_front[i+1]]
+            lower = objectives[o][sorted_front[i-1]]
+            gap = (higher - lower)/(maxs - mins) 
+            distances[sorted_front[i]] += gap
+            # divide by (max - min) so it makes sense
+            # to add values from different objectives
+
+    return distances
+
 
 # HELPER FUNCTIONS for evaluation convergence and spread⛔️
 # def _convergence(fit1, fit2): # in 2D.. don't need more
@@ -93,7 +187,9 @@ class NSGA2():
         self._convergence = []
         self._best_model = None
         self._best_convergence = None
-        
+        self._emp_min = None
+        self._emp_max = None
+
         self._biggest = max(
             sum(param.numel() for param in m.parameters()) # ⛔️ will change mid run????
             for m in self._population
@@ -109,105 +205,6 @@ class NSGA2():
     
     def evolve(self, generations=10, subset_fraction=0.07, report_jump=2, m_prob=0.3):
         
-        # HELPER FUNCTION
-        def _non_dominated_sorting(whole, fits1, fits2):
-            """
-            careful:
-            - dom_counts: list of integers (idx = )
-            - dominateds: list of lists (idx = by whom)
-            - dominated: list 
-            """
-            # HELPER FUNCTION
-            def _dominates(i, j):
-                """
-                MAXIMISATION problem: i dominates j if neither fitness worse and at least one better
-                "neither fitness worse" F1i >= F1j AND F2i >= F2j
-                "at least one better" F1i > F1j OR F2i > F2j
-                """
-                return (
-                    (fits1[i] >= fits1[j] and fits2[i] >= fits2[j]) and
-                    (fits1[i] > fits1[j] or fits2[i] > fits2[j])
-                )
-        
-            fronts = []
-            dom_counts = []
-            dominateds = []
-
-            first_front = []
-            for i in range(len(whole)): # for each solution idx in whole
-                dom_count = 0
-                dominated = []
-                for j in range(len(whole)):
-                    if _dominates(i, j):
-                        dominated.append(j)
-                    elif _dominates(j, i):
-                        dom_count += 1
-                if dom_count == 0:
-                    first_front.append(i)
-                
-                dom_counts.append(dom_count)
-                dominateds.append(dominated)
-
-            fronts.append(first_front)
-
-            # a solution is in the next front if,
-            # when current first is not considered (dom_count of underlying
-            # solutions -=1), the solution dom_count == 0
-            current_idx = 0
-            while current_idx < len(fronts) and fronts[current_idx]:
-                next_front = []
-                for p in fronts[current_idx]: # for each p in current front
-                    for q in dominateds[p]: # go to solutions q that p dominates
-                        dom_counts[q] -= 1 # pretend no current front
-                        if dom_counts[q] == 0:
-                            next_front.append(q)
-                
-                if next_front:
-                    fronts.append(next_front)
-                
-                current_idx +=1
-
-            return fronts
-        
-        # HELPER FUNCTION
-        def _crowding_distance(front, *objectives):
-            """
-            Args:
-                front: a list of idx from the populations
-                objectives: list of o lists, where o == number of objectives 
-                -> objectives[o] == list of fitnesses for ALL solutions in pop
-            """
-            distances = {s: float(0) for s in front}
-            objectives = [o for o in objectives]
-
-            for o in range(len(objectives)):
-                sorted_front = sorted(front, key=lambda idx: objectives[o][idx]) # min –> max
-                # each front solution (idx) -> fitnesses[idx]
-                # each front solution is mapped to a fitness
-                # and sorted by it, in order of increasing fitness
-                distances[sorted_front[0]] = math.inf
-                distances[sorted_front[-1]] = math.inf
-
-                mins = objectives[o][sorted_front[0]] # fit_value corresponding a sorted_fron[0]
-                maxs = objectives[o][sorted_front[-1]] # fit_value corresponding a sorted_fron[-1]
-
-                if mins == maxs:
-                    continue
-                
-                for i in range(1, len(front)-1):
-                    higher = objectives[o][sorted_front[i+1]]
-                    lower = objectives[o][sorted_front[i-1]]
-                    gap = (higher - lower)/(maxs - mins) 
-                    distances[sorted_front[i]] += gap
-                    # divide by (max - min) so it makes sense
-                    # to add values from different objectives
-
-            return distances
-
-
-        #####################
-        #🔥 EVOLUTION LOOP 🔥#
-        #####################
         _, axes = plt.subplots(nrows=generations, ncols=1, figsize=(10, 10))
         axes = np.atleast_1d(axes) # or else: if 1 gen, axex not subscriptable!!!!!! 
 
@@ -273,7 +270,7 @@ class NSGA2():
             all_fitnesses_2 = self._fitnesses_2 + children_fitnesses_2
             
             
-            fronts = _non_dominated_sorting(
+            fronts = non_dominated_sorting(
                 all_solutions, all_fitnesses_1, all_fitnesses_2
             )
             
@@ -286,7 +283,7 @@ class NSGA2():
                     solutions.extend(front)
                     break
                 else:
-                    distance = _crowding_distance(front, all_fitnesses_1, all_fitnesses_2)
+                    distance = crowding_distance(front, all_fitnesses_1, all_fitnesses_2)
                     descending_distance = sorted(front, key=lambda idx: distance[idx], reverse=True)
                     free = self._pop_size - len(solutions)
                     solutions.extend(descending_distance[:free])
@@ -314,7 +311,7 @@ class NSGA2():
             distances = [] # and record in self._convergence as pop_avg per gen
             for i in range(self._pop_size):
                 distances.append(convergence(normalised_x[i], normalised_y[i]))
-            self._convergence.append(math.mean(distances))
+            self._convergence.append(sum(distances)/len(distances))
 
             # finding most balanced model (closest to ideal)
             zipped = list(zip(self._population, self._convergence))
