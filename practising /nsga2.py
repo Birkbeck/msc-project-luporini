@@ -81,17 +81,18 @@ class NSGA2():
     ):
         self._islands = None
         self._data = data
-        self._pop_size = pop_size
         self._model = model # needs to be a class, not an istance!
         self._problem = problem
         self._population = [deepcopy(model(stride=random.randint(interval[0], interval[1]))) for i in range(pop_size)]
+        self._pop_size = pop_size
         
         self._fit_fn_1 = model_fitness#(data, problem=problem) #model_fitness is HIGHER ORDER
         self._fit_fn_2 = model_runtime#(data)
         self._fitnesses_1 = None
         self._fitnesses_2 = None
         self._convergence = []
-        self._best = None
+        self._best_model = None
+        self._best_convergence = None
         
         self._biggest = max(
             sum(param.numel() for param in m.parameters()) # ⛔️ will change mid run????
@@ -319,11 +320,13 @@ class NSGA2():
             zipped = list(zip(self._population, self._convergence))
             ordered = sorted(zipped, key= lambda x: x[1])
             best_model, best_convergence = ordered[0]
-            if self._best is None:
-                self._best = (deepcopy(best_model), best_convergence)
+            if self._best_model is None or self._best_convergence is None:
+                self._best_model = deepcopy(best_model)
+                self._best_convergence = best_convergence
             else:
-                if best_convergence < self._best[1]:
-                    self._best = (deepcopy(best_model), best_convergence)
+                if best_convergence < self._best_convergence:
+                    self._best_model = deepcopy(best_model)
+                    self._best_convergence = best_convergence
 
             # plotting the current population in 2D fitness landscape
             colour = [m._stride for m in self._population] # ⁉️
