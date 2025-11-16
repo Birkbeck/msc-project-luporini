@@ -28,15 +28,22 @@ evolution = nsga2.NSGA2(
     data=train_data
 )
 
-
+# exploratory runs for empirical min/max
+evolution.evolve(
+    generations=6,
+    bound_estimation=True,
+    m_prob=0.3
+)
+# actual evolution
 start = time.time()
 evolution.evolve(
     generations=6,
+    bound_estimation=False,
     m_prob=0.3
 )
 finish = time.time()
 
-
-print(
-    f"it took || {round(finish - start, 4)} sec to go through a run"
-)
+# plot
+go = input("wanna plot?")
+if go:
+    evolution.plot_evolution()

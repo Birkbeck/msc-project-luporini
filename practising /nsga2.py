@@ -132,7 +132,7 @@ def crowding_distance(front, *objectives):
 
     return distances
 
-def empirical_bounds()
+# def empirical_bounds()
 
 # HELPER FUNCTIONS for evaluation convergence and spread⛔️
 # def _convergence(fit1, fit2): # in 2D.. don't need more
@@ -168,12 +168,16 @@ class NSGA2():
     def _initialise_fitness(self):
         self._fitness = group_fitness(self._population, self._fit_fn)
     
-    def _estimate_convergence(self):
+    def _normalise_fitnesses(self):
         # normalise fitness space between 0, 1 using empirical bounds
         mino1, maxo1 = self._emp_bounds_1[0], self._emp_bounds_1[1]
         mino2, maxo2 = self._emp_bounds_2[0], self._emp_bounds_2[1]
         normalised_x = normalise_fitness(self._fitnesses_1, mino1, maxo1) # x fitness
         normalised_y = normalise_fitness(self._fitnesses_2, mino2, maxo2) # y speed
+        return normalised_x, normalised_y
+    
+    def _estimate_convergence(self):
+        normalised_x, normalised_y = self._normalise_fitnesses() # y speed
             
         # getting distance from ideal for each model 
         distances = [] # and record in self._convergence as pop_avg per gen
@@ -337,6 +341,18 @@ class NSGA2():
 
             if not bound_estimation:
                 self._estimate_convergence()
- 
+
+    def plot_evolution(self, nrows, ncols, figsize):
+        norm_x, norm_y = self._normalise_fitnesses()
+            
+        # plotting the current population in 2D fitness landscape
+        _, axes = plt.subplots(nrows, ncols, figsize)
+        colour = [m._stride for m in self._population] # ⁉️
+
+        for i in range(self._convergence):
+            axes[i].scatter(x=norm_x, y=norm_y, c=colour) # ⁉️
+            axes[i].set_aspect("equal", adjustable="box")
+
+        plt.show()   
             
              

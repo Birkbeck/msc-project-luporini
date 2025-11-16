@@ -119,6 +119,7 @@ def normalise_fitness(fitnesses: list, mino, maxo):
         for f in fitnesses
     ]
     return normalised_fitnesses
+    
 
 class GeneticAlgorithm():
 
