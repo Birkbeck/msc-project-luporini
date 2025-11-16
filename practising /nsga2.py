@@ -91,14 +91,22 @@ class NSGA2():
         self._fitnesses_1 = None
         self._fitnesses_2 = None
         self._convergence = []
+        self._best = None
         
         self._biggest = max(
             sum(param.numel() for param in m.parameters()) # ⛔️ will change mid run????
             for m in self._population
         )
 
+    def get_best(self):
+        best = self._best[0]
+        return best
     
-    def evolve(self, generations=10, subset_fraction=0.1, report_jump=2, m_prob=0.3):
+    def save_best(self, filepath):
+        best = self._best[0]
+        torch.save(best, filepath)
+    
+    def evolve(self, generations=10, subset_fraction=0.07, report_jump=2, m_prob=0.3):
         
         # HELPER FUNCTION
         def _non_dominated_sorting(whole, fits1, fits2):
@@ -307,17 +315,24 @@ class NSGA2():
                 distances.append(convergence(normalised_x[i], normalised_y[i]))
             self._convergence.append(distances)
 
+            # finding most balanced model
+            zipped = list(zip(self._population, self._convergence))
+            ordered = sorted(zipped, key= lambda x: x[1])
+            best_model, best_convergence = ordered[0]
+            if self._best is None:
+                self._best = (deepcopy(best_model), best_convergence)
+            else:
+                if best_convergence < self._best[1]:
+                    self._best = (deepcopy(best_model), best_convergence)
+
             # plotting the current population in 2D fitness landscape
             colour = [m._stride for m in self._population] # ⁉️
 
             axes[gen].scatter(x=normalised_x, y=normalised_y, c=colour) # ⁉️
             axes[gen].set_aspect("equal", adjustable="box")
         
-        zipped = list(zip(self._population, self._convergence))
-        ordered = sorted(zipped, key= lambda x: x[1])
-        best = ordered[0]
-
-        torch.save(best.state_dict(), "best.pth")
+        # SAVING A/MULTIPLE MODELS??
+        # torch.save(best.state_dict(), "best.pth")
 
 
         plt.show()    
