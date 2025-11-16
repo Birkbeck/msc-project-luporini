@@ -85,7 +85,7 @@ class NSGA2():
         self._problem = problem
         self._population = [deepcopy(model(stride=random.randint(interval[0], interval[1]))) for i in range(pop_size)]
         self._pop_size = pop_size
-        
+
         self._fit_fn_1 = model_fitness#(data, problem=problem) #model_fitness is HIGHER ORDER
         self._fit_fn_2 = model_runtime#(data)
         self._fitnesses_1 = None
@@ -310,13 +310,13 @@ class NSGA2():
             normalised_x = normalise_fitness(self._fitnesses_1) # x fitness
             normalised_y = normalise_fitness(self._fitnesses_2) # y speed
             
-            # getting distance from ideal for each model and record in self._convergence
-            distances = []
+            # getting distance from ideal for each model 
+            distances = [] # and record in self._convergence as pop_avg per gen
             for i in range(self._pop_size):
                 distances.append(convergence(normalised_x[i], normalised_y[i]))
-            self._convergence.append(distances)
+            self._convergence.append(math.mean(distances))
 
-            # finding most balanced model
+            # finding most balanced model (closest to ideal)
             zipped = list(zip(self._population, self._convergence))
             ordered = sorted(zipped, key= lambda x: x[1])
             best_model, best_convergence = ordered[0]
