@@ -100,11 +100,11 @@ class NSGA2():
         )
 
     def get_best(self):
-        best = self._best[0]
+        best = self._best_model
         return best
     
     def save_best(self, filepath):
-        best = self._best[0]
+        best = self._best_model
         torch.save(best, filepath)
     
     def evolve(self, generations=10, subset_fraction=0.07, report_jump=2, m_prob=0.3):
