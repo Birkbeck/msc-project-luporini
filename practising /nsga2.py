@@ -38,6 +38,20 @@ def model_runtime(data: DataLoader):
     
     return speed
 
+
+# HELPER FUNCTIONS for evaluation convergence and spread⛔️
+# def _convergence(fit1, fit2): # in 2D.. don't need more
+#     """model distange from ideal solution"""
+#     return math.sqrt((fit1 - 1)**2 + (fit2 - 1)**2)
+        
+def convergence(*fits):
+    """for a model: Euclidean distance from ideal s in nD"""
+    return math.sqrt(sum((f - 1)**2 for f in fits))
+
+        
+# def spread()
+
+
 class NSGA2():
     """
     multi-objective evolution based on Islands + original nsga-ii
@@ -179,15 +193,12 @@ class NSGA2():
                     # to add values from different objectives
 
             return distances
-        
-        # HELPER FUNCTIONS for evaluation metrics: convergence + spread
-        # def _convergence():
-        
-        # def _spread()
+
+
         #####################
         #🔥 EVOLUTION LOOP 🔥#
         #####################
-        fig, axes = plt.subplots(nrows=generations, ncols=1, figsize=(10, 10))
+        _, axes = plt.subplots(nrows=generations, ncols=1, figsize=(10, 10))
         axes = np.atleast_1d(axes) # or else: if 1 gen, axex not subscriptable!!!!!! 
 
         for gen in range(generations):

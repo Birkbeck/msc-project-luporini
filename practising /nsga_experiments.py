@@ -31,7 +31,7 @@ evolution = nsga2.NSGA2(
 
 start = time.time()
 evolution.evolve(
-    generations=5,
+    generations=6,
     m_prob=0.3
 )
 finish = time.time()
