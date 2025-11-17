@@ -22,15 +22,16 @@ test_data = MNIST("./datasets", download=False, train=False, transform=mytransfo
 train_loader = DataLoader(train_data, batch_size=30)
 test_loader = DataLoader(test_data, batch_size=30)
 
-experiments = 20
+experiments = 50
 seed = 42
 avg_convergence = []
 for e in range(experiments):
+    print(f"\nBeginning experiment {e+1}")
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     
-    evolution = nsga2.NSGA2(
+    evolver = nsga2.NSGA2(
         pop_size=50,
         model=TinyFlexyConvAE,
         interval=[1, 10],
@@ -38,20 +39,31 @@ for e in range(experiments):
     )
 
     # exploratory runs for empirical min/max
-    evolution.evolve(
-        generations=6,
+    print("- estimating the bounds..")
+    evolver.evolve(
+        generations=2,
         bound_estimation=True,
         m_prob=0.3
     )
 
+    b1, b2 = evolver.get_bounds()
+    # this and just reinitialise evolver!!! will need to
+    # include bounds in __init__
+
+    # when you have empirical bounds, you should reinitialise evolution
     # actual evolution
-    evolution.evolve(
-        generations=6,
+    print("- actual evolution..")
+    evolver.evolve(
+        generations=4,
+        bound1=b1,
+        bound2=b2,
         bound_estimation=False,
         m_prob=0.3
     )
 
-    avg_convergence.append(evolution.get_avg_convergence())
+    avg_convergence = evolver.get_avg_convergence()
+    avg_convergence.append(avg_convergence)
+    print(f"Avg population convergence: {round(avg_convergence, 2)}")
     seed += 2
 
 

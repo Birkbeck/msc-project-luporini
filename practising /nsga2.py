@@ -132,6 +132,13 @@ def crowding_distance(front, *objectives):
 
     return distances
 
+def initialise_population(model, size, intervallo:tuple):
+    return [
+        deepcopy(
+            model(stride=random.randint(intervallo[0], intervallo[1]))
+        ) for i in range(size)
+    ]
+
 # HELPER FUNCTIONS for evaluation convergence and spread⛔️
 def convergence(*fits):
     """for a model: Euclidean distance from ideal s in nD"""
@@ -209,7 +216,7 @@ class NSGA2():
         self._data = data
         self._model = model # needs to be a class, not an istance!
         self._problem = problem
-        self._population = [deepcopy(model(stride=random.randint(interval[0], interval[1]))) for i in range(pop_size)]
+        self._population = initialise_population(model, pop_size, interval)
         self._pop_size = pop_size
 
         self._fit_fn_1 = model_fitness#(data, problem=problem) #model_fitness is HIGHER ORDER
@@ -219,8 +226,8 @@ class NSGA2():
         self._convergence = [] # list of lists: normalised distances per generation
         self._best_model = None
         self._best_convergence = None
-        self._emp_bounds_1 = (0.0, 0.0) # empirical bounds per objective
-        self._emp_bounds_2 = (0.0, 0.0)
+        self._emp_bounds_1 = None # empirical bounds per objective
+        self._emp_bounds_2 = None
 
         self._biggest = max(
             sum(param.numel() for param in m.parameters()) # ⛔️ will change mid run????
@@ -236,18 +243,27 @@ class NSGA2():
         avg_convergence = sum(self._convergence[-1])/len(self._pop_size)
         return avg_convergence
     
+    def get_bounds(self):
+        return self._emp_bounds_1, self._emp_bounds_2
+    
     def save_best(self, filepath):
         best = self._best_model
         torch.save(best, filepath)
+
     
     def evolve(
             self,
-            generations=10,
+            bound1=(0.0, 0.0),
+            bound2=(0.0, 0.0),
             bound_estimation=True,
+            generations=10,
             subset_fraction=0.07,
             report_jump=2,        # UNUSED ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
             m_prob=0.3
     ):
+        
+        self._emp_bounds_1 = bound1
+        self._emp_bounds_2 = bound2
         
         for gen in range(generations):
 
