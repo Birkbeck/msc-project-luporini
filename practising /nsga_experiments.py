@@ -61,10 +61,14 @@ for e in range(experiments):
     # actual evolution
     print("- actual evolution..")
     evolver.evolve(
-        generations=2,
+        generations=4,
         bound_estimation=False,
         m_prob=0.3
     )
+
+    evolver.plot_convergence()
+
+    sys.exit()
 
     avg_convergence = evolver.get_avg_convergence()
     convergences.append(avg_convergence)

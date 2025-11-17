@@ -371,21 +371,15 @@ class NSGA2():
                 self._estimate_convergence()
 
 
-    # def plot_evolution(self, nrows, ncols, figsize):
-        # """ what the fuck do I want to plot? WHO KNOWS"""
-        # # plotting the current population in 2D fitness landscape
-        # _, axes = plt.subplots(nrows, ncols, figsize)
+    def plot_convergence(self):
+        """ what the fuck do I want to plot? WHO KNOWS"""
+        x = range(1, len(self._convergence)+1)
+        y = [sum(c)/len(c) for c in self._convergence]
         
-        # for i in range(len(self._convergence)):
-        #     # norm_x = normalise_fitness(self._fitnesses_1, self._emp_bounds_1) # x fitness
-        #     # norm_y = normalise_fitness(self._fitnesses_2, self._emp_bounds_2) # y speed
-            
-        #     avg_conv = sum(self._convergence[i])/len(self._convergence[i])
-        # colour = [m._stride for m in self._population] # ⁉️
-        # axes[i, 0].scatter(x=norm_x, y=norm_y, c=colour) # ⁉️
-        # axes[i, 0].set_aspect("equal", adjustable="box")
-
-
-        # plt.show()   
+        _, ax = plt.subplots()
+        ax.plot(x, y)
+        ax.set_xlabel("generation")
+        ax.set_ylabel("avg. distance from ideal solution")
+        plt.show()
             
              
