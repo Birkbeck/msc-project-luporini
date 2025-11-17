@@ -240,6 +240,17 @@ class NSGA2():
             for m in self._population
         )
 
+    def reset(self, model, pop_size, interval, bound1, bound2):
+        self._population = initialise_population(model, pop_size, interval)
+        self._fitnesses_1 = None
+        self._fitnesses_2 = None
+        self._convergence = [] # list of lists: normalised distances per generation
+        self._best_model = None
+        self._best_convergence = None
+        self._emp_bounds_1 = bound1 # empirical bounds per objective
+        self._emp_bounds_2 = bound2
+
+
     def get_best(self):
         best = self._best_model, self._best_convergence
         return best

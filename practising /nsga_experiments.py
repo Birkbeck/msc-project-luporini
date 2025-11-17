@@ -42,7 +42,7 @@ for e in range(experiments):
         data=train_data
     )
 
-    # exploratory runs for empirical min/max
+        # exploratory runs for empirical min/max
     print("\n- estimating the bounds..")
     evolver.evolve(
         generations=2,
@@ -51,8 +51,7 @@ for e in range(experiments):
     )
 
     b1, b2 = evolver.get_bounds()
-    # this and just reinitialise evolver!!! will need to
-    
+  
     evolver = nsga2.NSGA2(
         pop_size=10,
         model=TinyFlexyConvAE,
