@@ -152,6 +152,10 @@ def convergence(*fits):
 
 class NSGA2():
     """
+    ⛔️ bug in evolve.TOURNAMENT ~ CONVERGENCE ⛔️
+        - if evolution converges towards one archi only,
+          only one key available
+    
     multi-objective evolution based on Islands + original nsga-ii
     obj_1 = classic net optimisation (MSELoss/CrossEntropy)
     obj_2 = inference speed
@@ -271,7 +275,7 @@ class NSGA2():
     ):
         
         for gen in range(generations):
-            print(f"gen {gen}")
+            print(f"gen: {gen} | topologies: {len(self._islands)}")
 
             full_idxs = list(range(len(self._data)))
             labels = self._data.targets.numpy()
@@ -301,10 +305,7 @@ class NSGA2():
             # mating events, either within(more likely) or between(less likely)
             children = [] # TOURNAMENT 🔥
             for _ in range(self._pop_size//2):
-                if random.random() < 0.1: # unlikely cross-species crossover 🔥
-                    # CAREFUL!!!! SOMETIMES THERE MAY NOT BE ENOUGH KEYS
-                    # at some point in evolution, all models might converge
-                    # to one architecture!!!
+                if random.random() < 0.1 and len(self._islands)>= 2: # unlikely cross-species crossover 🔥
                     random_keys = random.sample(list(self._islands.keys()), k=2)
                     key1, key2 = random_keys[0], random_keys[1]
                     pool1, pool2 = self._islands[key1], self._islands[key2]
