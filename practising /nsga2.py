@@ -209,6 +209,8 @@ class NSGA2():
             pop_size,
             model,
             data,
+            bound1=(0.0, 0.0),
+            bound2=(0.0, 0.0),
             interval=[1, 4], # small interval compared to pop_size? ⛔️ representativeness
             problem = "AE"
     ):
@@ -226,44 +228,42 @@ class NSGA2():
         self._convergence = [] # list of lists: normalised distances per generation
         self._best_model = None
         self._best_convergence = None
-        self._emp_bounds_1 = None # empirical bounds per objective
-        self._emp_bounds_2 = None
+        self._emp_bounds_1 = bound1 # empirical bounds per objective
+        self._emp_bounds_2 = bound2
 
         self._biggest = max(
             sum(param.numel() for param in m.parameters()) # ⛔️ will change mid run????
             for m in self._population
         )
 
-    def get_best_model(self):
-        best = self._best_model
+    def get_best(self):
+        best = self._best_model, self._best_convergence
         return best
     
     def get_avg_convergence(self):
         """get FINAL population convergence"""
-        avg_convergence = sum(self._convergence[-1])/len(self._pop_size)
+        avg_convergence = sum(self._convergence[-1])/self._pop_size
         return avg_convergence
     
     def get_bounds(self):
         return self._emp_bounds_1, self._emp_bounds_2
     
     def save_best(self, filepath):
-        best = self._best_model
+        best = {
+            "weights": self._best_model.state_dict(),
+            "convergence": self._best_convergence
+        }
         torch.save(best, filepath)
 
     
     def evolve(
             self,
-            bound1=(0.0, 0.0),
-            bound2=(0.0, 0.0),
             bound_estimation=True,
             generations=10,
             subset_fraction=0.07,
             report_jump=2,        # UNUSED ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
             m_prob=0.3
     ):
-        
-        self._emp_bounds_1 = bound1
-        self._emp_bounds_2 = bound2
         
         for gen in range(generations):
 

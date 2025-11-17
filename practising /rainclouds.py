@@ -80,4 +80,4 @@ a = np.random.normal(loc=3, scale=2, size=30)
 b = np.random.normal(loc=5, scale=1, size=30)
 samples = [a, b]
 
-rainclouds(samples, assume_normal=True)
+# rainclouds(samples, assume_normal=True)

@@ -11,6 +11,7 @@ from torchvision.datasets import MNIST
 from torch.utils.data import DataLoader, Subset
 from architectures import TinyFlexyConvAE, FlexyConvAE
 import nsga2
+from rainclouds import rainclouds
 
 mytransform = transforms.ToTensor()
 
@@ -22,9 +23,9 @@ test_data = MNIST("./datasets", download=False, train=False, transform=mytransfo
 train_loader = DataLoader(train_data, batch_size=30)
 test_loader = DataLoader(test_data, batch_size=30)
 
-experiments = 50
+experiments = 2
 seed = 42
-avg_convergence = []
+convergences = []
 for e in range(experiments):
     print(f"\nBeginning experiment {e+1}")
     random.seed(seed)
@@ -32,14 +33,14 @@ for e in range(experiments):
     torch.manual_seed(seed)
     
     evolver = nsga2.NSGA2(
-        pop_size=50,
+        pop_size=10,
         model=TinyFlexyConvAE,
         interval=[1, 10],
         data=train_data
     )
 
     # exploratory runs for empirical min/max
-    print("- estimating the bounds..")
+    print("\n- estimating the bounds..")
     evolver.evolve(
         generations=2,
         bound_estimation=True,
@@ -48,28 +49,32 @@ for e in range(experiments):
 
     b1, b2 = evolver.get_bounds()
     # this and just reinitialise evolver!!! will need to
-    # include bounds in __init__
-
-    # when you have empirical bounds, you should reinitialise evolution
+    
+    evolver = nsga2.NSGA2(
+        pop_size=10,
+        model=TinyFlexyConvAE,
+        bound1= b1,
+        bound2=b2,
+        interval=[1, 10],
+        data=train_data
+    )
     # actual evolution
     print("- actual evolution..")
     evolver.evolve(
-        generations=4,
-        bound1=b1,
-        bound2=b2,
+        generations=2,
         bound_estimation=False,
         m_prob=0.3
     )
 
     avg_convergence = evolver.get_avg_convergence()
-    avg_convergence.append(avg_convergence)
+    convergences.append(avg_convergence)
     print(f"Avg population convergence: {round(avg_convergence, 2)}")
+    
     seed += 2
 
 
-
 fig, ax = plt.subplots(figsize=(10, 10))
-ax.hist()
+ax.hist(convergences)
 plt.show()
 
 
