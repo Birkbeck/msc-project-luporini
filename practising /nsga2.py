@@ -232,8 +232,8 @@ class NSGA2():
         self._convergence = [] # list of lists: normalised distances per generation
         self._best_model = None
         self._best_convergence = None
-        self._emp_bounds_1 = bound1 # empirical bounds per objective
-        self._emp_bounds_2 = bound2
+        self._emp_bounds_1 = None # empirical bounds per objective
+        self._emp_bounds_2 = None
 
         self._biggest = max(
             sum(param.numel() for param in m.parameters()) # ⛔️ will change mid run????
@@ -243,6 +243,13 @@ class NSGA2():
     def get_best(self):
         best = self._best_model, self._best_convergence
         return best
+    
+    def save_best(self, filepath):
+        best = {
+            "weights": self._best_model.state_dict(),
+            "convergence": self._best_convergence
+        }
+        torch.save(best, filepath)
     
     def conv_in_time(self):
         """returns list of avg.pop distance from ideal point per generation"""
@@ -255,13 +262,6 @@ class NSGA2():
     
     def get_bounds(self):
         return self._emp_bounds_1, self._emp_bounds_2
-    
-    def save_best(self, filepath):
-        best = {
-            "weights": self._best_model.state_dict(),
-            "convergence": self._best_convergence
-        }
-        torch.save(best, filepath)
     
     def plot_convergence(self):
         """ what the fuck do I want to plot? WHO KNOWS"""
@@ -283,13 +283,18 @@ class NSGA2():
         self._emp_bounds_1 = bound1 # empirical bounds per objective
         self._emp_bounds_2 = bound2
 
-    def transfer(self, model):
+    def transfer(self, model, bound1, bound2, freeze=False):
         """should I just swap the new pop in??"""
         pop = []
         for m in self._population:
             weights = m.encoder.state_dict()
             new = model(m, stride=m.get_stride())
             new.encoder.load_state_dict(weights)
+
+            if freeze:
+                for param in new.parameters():
+                    param.requires_grad = False
+
             pop.append(new)
         
         self._population = pop
