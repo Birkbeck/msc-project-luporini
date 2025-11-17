@@ -207,7 +207,7 @@ class TinyFlexyConvAE(nn.Module):
 
 
 
-class TinyConvClassifier(nn.Module):
+class ConvClassifier(nn.Module):
     """
     Classifier based on FlexyConvAE..
 
@@ -263,3 +263,37 @@ class TinyConvClassifier(nn.Module):
         output = self.encoder(data)
         output = self.classifier_head(output)
         return output
+    
+
+class ConvClassifier(nn.Module):
+    def __init__(
+            self,
+            input_shape=(1, 28, 28),
+            stride=2,
+            padding=1,
+            kernel=3,
+            nonlinearity=nn.ReLU
+    ):
+        super().__init__()
+        self._input = input_shape[1]
+        self._channels = input_shape[0]
+        self._stride = stride
+        self._pad = padding
+        self._kernel = kernel
+        self._nonl = nonlinearity
+
+        self.encoder = nn.Sequential(
+            nn.Conv2d(
+                self._channels,
+                20,
+                kernel_size=self._kernel,
+                stride=self._stride,
+                padding=self._pad
+            ),
+            self._nonl()
+        )
+
+
+
+    def get_stride(self):
+        return self._stride

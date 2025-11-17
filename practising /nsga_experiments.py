@@ -51,12 +51,14 @@ for e in range(experiments):
     )
 
     b1, b2 = evolver.get_bounds()
-    evolver.reset(TinyFlexyConvAE, 10, interval=[1, 7], bound1=b1, bound2=b2)
+    evolver.reset(
+        TinyFlexyConvAE, 10, interval=[1, 7], bound1=b1, bound2=b2
+    )
 
     # actual evolution
     print("- actual evolution..")
     evolver.evolve(
-        generations=10,
+        generations=5,
         bound_estimation=False,
         m_prob=0.3
     )

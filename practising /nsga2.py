@@ -242,6 +242,7 @@ class NSGA2():
 
     def reset(self, model, pop_size, interval, bound1, bound2):
         self._population = initialise_population(model, pop_size, interval)
+        self._population_2 = None
         self._fitnesses_1 = None
         self._fitnesses_2 = None
         self._convergence = [] # list of lists: normalised distances per generation
@@ -274,6 +275,28 @@ class NSGA2():
             "convergence": self._best_convergence
         }
         torch.save(best, filepath)
+    
+    def plot_convergence(self):
+        """ what the fuck do I want to plot? WHO KNOWS"""
+        distances = self.conv_in_time()
+        
+        _, ax = plt.subplots()
+        ax.plot(range(len(distances)), distances)
+        ax.set_xlabel("generation")
+        ax.set_ylabel("avg. distance from ideal solution")
+        plt.show()
+    
+
+    def transfer(self, model):
+        """should I just swap the new pop in??"""
+        pop = []
+        for m in self._population:
+            weights = m.encoder.state_dict()
+            new = model(m, stride=m.get_stride())
+            new.encoder.load_state_dict(weights)
+            pop.append(new)
+        
+        self._population_2 = pop
 
     
     def evolve(
@@ -326,8 +349,8 @@ class NSGA2():
                         parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
                 
                 child1, child2 = crossover(parent1, parent2)
-                child1 = (mutate(child1[0]), child1[1], child1[2])
-                child2 = (mutate(child2[0]), child2[1], child2[2])
+                child1 = (mutate(child1[0]), child1[1], child1[2]) # mutate 50% of genes
+                child2 = (mutate(child2[0]), child2[1], child2[2]) # mutate 50% of genes
                 
                 children.extend([child1, child2])
 
@@ -384,14 +407,6 @@ class NSGA2():
                 self._estimate_convergence()
 
 
-    def plot_convergence(self):
-        """ what the fuck do I want to plot? WHO KNOWS"""
-        distances = self.conv_in_time()
-        
-        _, ax = plt.subplots()
-        ax.plot(range(len(distances)), distances)
-        ax.set_xlabel("generation")
-        ax.set_ylabel("avg. distance from ideal solution")
-        plt.show()
+    
             
              

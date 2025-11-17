@@ -28,7 +28,7 @@ def remodel(flat, model):
     return model
 
 
-def mutate(guy:torch.Tensor, m_chance=0.05, mode="small", m_rate=0.3) -> torch.Tensor:
+def mutate(guy:torch.Tensor, m_chance=0.2, mode="small", m_rate=0.3) -> torch.Tensor:
     """
     randomly mutate parameters in a 1D tensor
 
