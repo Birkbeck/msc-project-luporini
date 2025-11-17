@@ -174,6 +174,7 @@ class NSGA2():
         self._fitness = group_fitness(self._population, self._fit_fn)
     
     def _bounds_estimation(sel, fitnesses, bound):
+        """update (or not) bounds"""
         mino, maxo = min(fitnesses), max(fitnesses)
         bounds = (min(mino, bound[0]), max(maxo, bound[1]))
         return bounds
@@ -228,7 +229,6 @@ class NSGA2():
         self._fit_fn_1 = model_fitness#(data, problem=problem) #model_fitness is HIGHER ORDER
         self._fit_fn_2 = model_runtime#(data)
         self._fitnesses_1 = None
-        self._fitnesses_2 = None
         self._convergence = [] # list of lists: normalised distances per generation
         self._best_model = None
         self._best_convergence = None
@@ -240,18 +240,6 @@ class NSGA2():
             for m in self._population
         )
 
-    def reset(self, model, pop_size, interval, bound1, bound2):
-        self._population = initialise_population(model, pop_size, interval)
-        self._population_2 = None
-        self._fitnesses_1 = None
-        self._fitnesses_2 = None
-        self._convergence = [] # list of lists: normalised distances per generation
-        self._best_model = None
-        self._best_convergence = None
-        self._emp_bounds_1 = bound1 # empirical bounds per objective
-        self._emp_bounds_2 = bound2
-
-
     def get_best(self):
         best = self._best_model, self._best_convergence
         return best
@@ -259,7 +247,6 @@ class NSGA2():
     def conv_in_time(self):
         """returns list of avg.pop distance from ideal point per generation"""
         return [sum(i)/len(i) for i in self._convergence]
-        
     
     def avg_convergence(self):
         """get FINAL population convergence (mean convergence at last gen)"""
@@ -286,6 +273,15 @@ class NSGA2():
         ax.set_ylabel("avg. distance from ideal solution")
         plt.show()
     
+    def reset(self, model, pop_size, interval, bound1, bound2):
+        self._population = initialise_population(model, pop_size, interval)
+        self._fitnesses_1 = None
+        self._fitnesses_2 = None
+        self._convergence = [] # list of lists: normalised distances per generation
+        self._best_model = None
+        self._best_convergence = None
+        self._emp_bounds_1 = bound1 # empirical bounds per objective
+        self._emp_bounds_2 = bound2
 
     def transfer(self, model):
         """should I just swap the new pop in??"""
@@ -296,7 +292,14 @@ class NSGA2():
             new.encoder.load_state_dict(weights)
             pop.append(new)
         
-        self._population_2 = pop
+        self._population = pop
+        self._fitnesses_1 = None
+        self._fitnesses_2 = None
+        self._convergence = [] # list of lists: normalised distances per generation
+        self._best_model = None
+        self._best_convergence = None
+        self._emp_bounds_1 = bound1 # empirical bounds per objective
+        self._emp_bounds_2 = bound2
 
     
     def evolve(
@@ -399,10 +402,18 @@ class NSGA2():
 
 
             if bound_estimation:
-                bounds1 = self._bounds_estimation(self._fitnesses_1, self._emp_bounds_1)
-                bounds2 = self._bounds_estimation(self._fitnesses_2, self._emp_bounds_2)
-                self._emp_bounds_1 = bounds1
-                self._emp_bounds_2 = bounds2
+                if gen == 0:
+                    b1 = (min(self._fitnesses_1), max(self._fitnesses_1))
+                    b2 = (min(self._fitnesses_2), max(self._fitnesses_2))
+                    bounds1 = self._bounds_estimation(self._fitnesses_1, b1))
+                    bounds2 = self._bounds_estimation(self._fitnesses_2, b2)
+                    self._emp_bounds_1 = bounds1
+                    self._emp_bounds_2 = bounds2
+                else:
+                    bounds1 = self._bounds_estimation(self._fitnesses_1, self._emp_bounds_1)
+                    bounds2 = self._bounds_estimation(self._fitnesses_2, self._emp_bounds_2)
+                    self._emp_bounds_1 = bounds1
+                    self._emp_bounds_2 = bounds2
             else:
                 self._estimate_convergence()
 
