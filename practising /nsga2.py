@@ -245,8 +245,8 @@ class NSGA2():
         return [sum(i)/len(i) for i in self._convergence]
         
     
-    def get_avg_convergence(self):
-        """get FINAL population convergence"""
+    def avg_convergence(self):
+        """get FINAL population convergence (mean convergence at last gen)"""
         avg_convergence = sum(self._convergence[-1])/self._pop_size
         return avg_convergence
     
@@ -271,6 +271,7 @@ class NSGA2():
     ):
         
         for gen in range(generations):
+            print(f"gen {gen}")
 
             full_idxs = list(range(len(self._data)))
             labels = self._data.targets.numpy()
@@ -291,16 +292,19 @@ class NSGA2():
             self._fitnesses_2 = group_fitness(self._population, fit_fn_2)
 
             # checking topologies.. changing through generations ⁉️
-            for key in sorted(self._islands):
-                value = self._islands[key]
-                print(f"{key}: {len(value)} models")
-            print(f"\nwith {self._pop_size} individuals total")
+            # for key in sorted(self._islands):
+            #     value = self._islands[key]
+            #     print(f"{key}: {len(value)} models")
+            # print(f"\nwith {self._pop_size} individuals total")
             
 
             # mating events, either within(more likely) or between(less likely)
             children = [] # TOURNAMENT 🔥
             for _ in range(self._pop_size//2):
                 if random.random() < 0.1: # unlikely cross-species crossover 🔥
+                    # CAREFUL!!!! SOMETIMES THERE MAY NOT BE ENOUGH KEYS
+                    # at some point in evolution, all models might converge
+                    # to one architecture!!!
                     random_keys = random.sample(list(self._islands.keys()), k=2)
                     key1, key2 = random_keys[0], random_keys[1]
                     pool1, pool2 = self._islands[key1], self._islands[key2]

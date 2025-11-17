@@ -38,7 +38,7 @@ from scipy import stats
 # RAINCLOUD PLOTS ☔️✨ ######
 ##############################
 
-def rainclouds(groups, assume_normal=True):
+def rainclouds(groups: list[list], assume_normal=True):
     _, ax = plt.subplots()
 
     for i, s in enumerate(groups):
