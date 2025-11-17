@@ -286,7 +286,6 @@ class NSGA2():
     ):
         
         for gen in range(generations):
-            print(f"gen: {gen} | topologies: {len(self._islands)}")
 
             full_idxs = list(range(len(self._data)))
             labels = self._data.targets.numpy()
@@ -297,22 +296,15 @@ class NSGA2():
             fit_fn_1 = self._fit_fn_1(train_loader, self._problem)
             fit_fn_2 = self._fit_fn_2(train_loader)
 
-            # if first gen:
-            # initialise self._islands
-            # initialise self._fitnesses coz can't add list + None later
+            ################################################
             if gen == 0:
                 self._initialise_islands()
+            print(f"gen {gen} | topologies: {len(self._islands)}")
+            ################################################
             
             self._fitnesses_1 = group_fitness(self._population, fit_fn_1)
             self._fitnesses_2 = group_fitness(self._population, fit_fn_2)
-
-            # checking topologies.. changing through generations ⁉️
-            # for key in sorted(self._islands):
-            #     value = self._islands[key]
-            #     print(f"{key}: {len(value)} models")
-            # print(f"\nwith {self._pop_size} individuals total")
             
-
             # mating events, either within(more likely) or between(less likely)
             children = [] # TOURNAMENT 🔥
             for _ in range(self._pop_size//2):

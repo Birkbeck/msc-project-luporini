@@ -23,7 +23,7 @@ test_data = MNIST("./datasets", download=False, train=False, transform=mytransfo
 train_loader = DataLoader(train_data, batch_size=30)
 test_loader = DataLoader(test_data, batch_size=30)
 
-experiments = 10
+experiments = 7
 seed = 42
 avg_convs = []
 convs_in_time = []
@@ -51,15 +51,8 @@ for e in range(experiments):
     )
 
     b1, b2 = evolver.get_bounds()
-  
-    evolver = nsga2.NSGA2(
-        pop_size=10,
-        model=TinyFlexyConvAE,
-        bound1= b1,
-        bound2=b2,
-        interval=[1, 7],
-        data=train_data
-    )
+    evolver.reset(TinyFlexyConvAE, 10, interval=[1, 7], bound1=b1, bound2=b2)
+
     # actual evolution
     print("- actual evolution..")
     evolver.evolve(
