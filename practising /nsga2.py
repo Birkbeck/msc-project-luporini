@@ -241,7 +241,7 @@ class NSGA2():
         return best
     
     def conv_in_time(self):
-        """returns list of avg.pop distance from ideal point"""
+        """returns list of avg.pop distance from ideal point per generation"""
         return [sum(i)/len(i) for i in self._convergence]
         
     
@@ -378,11 +378,10 @@ class NSGA2():
 
     def plot_convergence(self):
         """ what the fuck do I want to plot? WHO KNOWS"""
-        x = range(1, len(self._convergence)+1)
-        y = [sum(c)/len(c) for c in self._convergence]
+        distances = self.conv_in_time()
         
         _, ax = plt.subplots()
-        ax.plot(x, y)
+        ax.plot(range(len(distances)), distances)
         ax.set_xlabel("generation")
         ax.set_ylabel("avg. distance from ideal solution")
         plt.show()
