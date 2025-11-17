@@ -240,6 +240,11 @@ class NSGA2():
         best = self._best_model, self._best_convergence
         return best
     
+    def conv_in_time(self):
+        """returns list of avg.pop distance from ideal point"""
+        return [sum(i)/len(i) for i in self._convergence]
+        
+    
     def get_avg_convergence(self):
         """get FINAL population convergence"""
         avg_convergence = sum(self._convergence[-1])/self._pop_size
