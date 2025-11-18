@@ -419,7 +419,7 @@ class NSGA2():
         population = checkpoint["population"]
         self._population = []
         for state, s in population:
-            m = model(stride=s)
+            m = model(stride=s).to(mydevice)
             m.load_state_dict(state)
             self._population.append(m)
         self._initialise_islands()
@@ -429,7 +429,7 @@ class NSGA2():
         self._convergence = checkpoint["convergence"]
         
         weights, s = checkpoint["best_model"]
-        best = model(stride=s)
+        best = model(stride=s).to(mydevice)
         best.load_state_dict(weights)
         self._best_model = best
         self._best_convergence = checkpoint["best_convergence"]
