@@ -10,13 +10,14 @@ import torch
 from torchvision import transforms
 from torchvision.datasets import MNIST, CIFAR10
 from torch.utils.data import DataLoader, Subset
-from architectures import TinyFlexyConvAE, FlexyConvAE
+from architectures import TinyFlexyConvAE, TinyConvClassifier
 import nsga2
 from rainclouds import rainclouds
 
+###############################################
+######## get the data ########################
+###############################################
 mytransform = transforms.ToTensor()
-
-# help(MNIST) # PIL images
 
 train_data = MNIST("./datasets", download=False, train=True, transform=mytransform)
 test_data = MNIST("./datasets", download=False, train=False, transform=mytransform)
@@ -30,8 +31,13 @@ test_loader = DataLoader(test_data, batch_size=30)
 mnist = (1, 28, 28)
 cifar = (3, 32, 32)
 
+################################################
+######### set the experiments #################
+################################################
+m = TinyConvClassifier
 pop = 10
 exps = 30
+prob = "classification"
 seed = 42
 avg_convs = []
 convs_in_time = []
@@ -45,10 +51,11 @@ for e in range(exps):
     
     evolver = nsga2.NSGA2(
         pop_size=pop,
-        model=TinyFlexyConvAE,
+        model=m,
         input_shape=mnist,
         interval=[1, 7],
-        data=train_data
+        data=train_data,
+        problem=prob
     )
 
         # exploratory runs for empirical min/max
@@ -61,7 +68,7 @@ for e in range(exps):
 
     b1, b2 = evolver.get_bounds()
     evolver.reset(
-        TinyFlexyConvAE, 10, interval=[1, 7], bound1=b1, bound2=b2
+        m, 10, interval=[1, 7], bound1=b1, bound2=b2
     )
 
     # actual evolution
@@ -82,9 +89,11 @@ for e in range(exps):
     seed += 2
 
     ax.plot(range(len(conv)), conv, alpha=0.4, color="lightblue")
-    
 
-with open(f"MNIST_{pop}_{exps}.json", "w") as f:
+################################################
+######## save results #########################
+################################################
+with open(f"MNIST_{prob}_{pop}_{exps}.json", "w") as f:
     json.dump({"avg_convs": avg_convs, "convs_in_time": convs_in_time})
 
 # with open(f"MNIST_{pop}_{exps}.json", "r") as f:
@@ -92,6 +101,9 @@ with open(f"MNIST_{pop}_{exps}.json", "w") as f:
 #     avg_convs = data["avg_convs"]
 #     convs_in_time = data["convs_in_time"]
 
+################################################
+######## plot convergence #####################
+################################################
 # group convergence across experiments by generation
 avg_conv_per_gen = [sum(i)/len(i) for i in zip(*convs_in_time)]
 
