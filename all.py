@@ -11,16 +11,20 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Subset
 
+mydevice = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 def flatten(model):
     """
      flatten each parameter into a 1D tensor and concatenate
     """
-    return torch.cat([param.view(-1) for param in model.parameters()])
+    device = next(model.parameters()).device
+    return torch.cat([param.view(-1) for param in model.parameters()]).to(device)
     # return torch.cat([param.data.view(-1) for param in model.parameters()]) # NO!!!!
                             # BREAKS COMPUTATION GRAPH.. don't risk it
                             # might need autograd later
 
 def embed(model, biggest):
+    device = next(model.parameters()).device
     flat = flatten(model)
     mu = flat.mean().item()
     sigma = flat.std().item()
@@ -34,12 +38,9 @@ def embed(model, biggest):
         lx_pad_size = difference // 2
         rx_pad_size = difference - lx_pad_size
     
-    # if seed is not None:
-    #     torch.manual_seed(seed)
-    
-    # careful here⛔️: every time embed() is called, torch.random introduces randomness
-    lx_padding = torch.normal(mu, sigma, (lx_pad_size,), dtype=flat.dtype)
-    rx_padding = torch.normal(mu, sigma, (rx_pad_size,), dtype=flat.dtype)
+    # ⛔️: every time embed() called, torch.random introduces randomness
+    lx_padding = torch.normal(mu, sigma, (lx_pad_size,), dtype=flat.dtype, device=device)
+    rx_padding = torch.normal(mu, sigma, (rx_pad_size,), dtype=flat.dtype, device=device)
 
     return (
         torch.cat([lx_padding, flat, rx_padding]), size, model
