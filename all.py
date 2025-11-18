@@ -338,7 +338,7 @@ class NSGA2():
                 model(
                     input_shape=input_shape,
                     stride=random.randint(interval[0], interval[1])
-                )
+                ).to(mydevice)
             ) for i in range(pop_size)
         ]
 
@@ -474,12 +474,12 @@ class NSGA2():
         plt.show()
     
     def reset(self, model, pop_size, interval, bound1, bound2):
-        self._population = self._population = [
+        self._population = [
             deepcopy(
                 model(
                     input_shape=self._input_shape,
                     stride=random.randint(interval[0], interval[1])
-                )
+                ).to(mydevice)
             ) for i in range(pop_size)
         ]
         self._fitnesses_1 = None
@@ -497,7 +497,7 @@ class NSGA2():
         pop = []
         for m in self._population:
             weights = m.encoder.state_dict()
-            new = model(m, stride=m.get_stride())
+            new = model(m, stride=m.get_stride()).to(mydevice)
             new.encoder.load_state_dict(weights)
 
             if freeze:
