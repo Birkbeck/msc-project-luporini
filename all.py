@@ -125,11 +125,12 @@ def model_fitness(data: DataLoader, problem="AE"):
         out = lambda X, y: X
     
     def fitness(model):
+        device=next(model.parameters()).device
         model.eval()
         with torch.no_grad():
             tot_loss = 0
             for X, y in data:
-                X, y = X, out(X, y)
+                X, y = X.to(device), out(X, y).to(device)
                 pred = model(X)
                 loss = loss_fn(pred, y)
                 tot_loss += loss.item()   # ⛔️SPIKING FITNESS if avg_loss very small
@@ -152,10 +153,9 @@ def normalise_fitness(fitnesses: list, bound):
     normalises fitnesses between 0 and 1
     normalised_f = (f - min)/(max - min) 
     """
-    mino, maxo = bound[0], bound[1]
-    deno = (maxo - mino + 1e-8)
+    mino, maxo = bound
     normalised_fitnesses = [
-        (f - mino) / deno
+        (f - mino) / (maxo - mino + 1e-8)
         for f in fitnesses
     ]
     return normalised_fitnesses
@@ -164,6 +164,7 @@ def model_runtime(data: DataLoader):
     """
     careful if using on GPU.. operations are asynchronous
     - torch.cuda.synchronise() ⁉️
+    - synch for every time.time() ⁉️ (https://discuss.pytorch.org/t/bizzare-extra-time-consumption-in-pytorch-gpu-1-1-0-1-2-0/87843)
 
     ALSO
 
@@ -171,14 +172,27 @@ def model_runtime(data: DataLoader):
     - return len(data)/interval ⁉️
     """
     def speed(model):
+        device = next(model.parameters()).device
         model.eval()
         with torch.no_grad():
-            
+            ##########################
+            # wait for all GPU kernels to be done !!!
+            if device.type == "cuda":
+                torch.cuda.synchronize() 
+            ##########################
+
             start = time.time()
             for X, _ in data:
+                X = X.to(device)
                 _ = model(X)
-            finish = time.time()
+
+            ##########################
+            # wait for all GPU kernels to be done !!!
+            if device.type == "cuda":
+                torch.cuda.synchronize() 
+            ##########################
             
+            finish = time.time()
             # interval = (finish - start) / len(data)
             interval = finish - start # just raw time, not avg. (would be too quick?)
         return 1/interval
