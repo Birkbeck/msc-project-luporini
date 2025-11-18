@@ -48,9 +48,10 @@ def embed(model, biggest):
 
 
 def remodel(embedded, original_size, model, biggest):
+    device = next(model.parameters()).device
     difference = biggest - original_size
     lx = difference // 2
-    flat = embedded[lx:lx + original_size]
+    flat = embedded[lx:lx + original_size].to(device)
 
     index = 0
     for param in model.parameters():
@@ -69,10 +70,11 @@ def crossover(parent1: torch.Tensor, parent2: torch.Tensor)-> tuple[torch.Tensor
        parent1: flat model
        parent2: flat model
     """
-    flat1, s, a = parent1[0], parent1[1], parent1[2]
-    flat2 = parent2[0]
+    flat1, s, a = parent1
+    flat2, _, _ = parent2
     
-    mask = torch.randint(0, 2, flat1.shape, dtype=torch.bool) # mask with zeroes and ones
+    device = parent1.device 
+    mask = torch.randint(0, 2, flat1.shape, dtype=torch.bool, device=device) # mask with zeroes and ones
     child1 = (torch.where(mask, flat1, flat2), s, a)
     child2 = (torch.where(mask, flat2, flat1), s, a)
 
@@ -89,15 +91,16 @@ def mutate(guy:torch.Tensor, m_chance=0.2, mode="small", m_rate=0.3) -> torch.Te
         mode: either "50/50", where half of the genes mutate on avg. or else, where #mutation depends on m_chance
         m_rate: scaling factor for mutation strength
     """
+    device = guy.device
     if mode == "50/50":
-        mask = torch.randint_like(guy, 2) # 0-1s mask.. which params are mutated
-        strength = torch.randn_like(guy) # raw mutation effect
+        mask = torch.randint_like(guy, 2, device=device) # 0-1s mask.. which params are mutated
+        strength = torch.randn_like(guy, device=device) # raw mutation effect
         # mutation = mask * noise #?? effect too great on 1s, needs scaling
         mutation = m_rate * mask * strength
         #⛔️half of the genes mutated on avg!!! AGGRESSIVE?
     else:
-        mask = torch.rand_like(guy) < m_chance
-        strength = torch.randn_like(guy)
+        mask = torch.rand_like(guy, device=device) < m_chance
+        strength = torch.randn_like(guy, device=device)
         mutation = m_rate * mask * strength
     
     return guy + mutation
