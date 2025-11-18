@@ -132,13 +132,6 @@ def crowding_distance(front, *objectives):
 
     return distances
 
-def initialise_population(model, size, intervallo:tuple):
-    return [
-        deepcopy(
-            model(stride=random.randint(intervallo[0], intervallo[1]))
-        ) for i in range(size)
-    ]
-
 # HELPER FUNCTIONS for evaluation convergence and spread⛔️
 def convergence(*fits):
     """for a model: Euclidean distance from ideal s in nD"""
@@ -214,8 +207,7 @@ class NSGA2():
             pop_size,
             model,
             data,
-            bound1=(0.0, 0.0),
-            bound2=(0.0, 0.0),
+            input_shape=(1, 28, 28),
             interval=[1, 4], # small interval compared to pop_size? ⛔️ representativeness
             problem = "AE"
     ):
@@ -223,8 +215,15 @@ class NSGA2():
         self._data = data
         self._model = model # needs to be a class, not an istance!
         self._problem = problem
-        self._population = initialise_population(model, pop_size, interval)
         self._pop_size = pop_size
+        self._population = [
+            deepcopy(
+                model(
+                    input_shape=input_shape,
+                    stride=random.randint(interval[0], interval[1])
+                )
+            ) for i in range(pop_size)
+        ]
 
         self._fit_fn_1 = model_fitness#(data, problem=problem) #model_fitness is HIGHER ORDER
         self._fit_fn_2 = model_runtime#(data)
@@ -410,7 +409,7 @@ class NSGA2():
                 if gen == 0:
                     b1 = (min(self._fitnesses_1), max(self._fitnesses_1))
                     b2 = (min(self._fitnesses_2), max(self._fitnesses_2))
-                    bounds1 = self._bounds_estimation(self._fitnesses_1, b1))
+                    bounds1 = self._bounds_estimation(self._fitnesses_1, b1)
                     bounds2 = self._bounds_estimation(self._fitnesses_2, b2)
                     self._emp_bounds_1 = bounds1
                     self._emp_bounds_2 = bounds2
