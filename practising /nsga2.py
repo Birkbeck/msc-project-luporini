@@ -369,7 +369,10 @@ class NSGA2():
         for gen in range(self._gen, self._max_gen):
 
             full_idxs = list(range(len(self._data)))
-            labels = self._data.targets.numpy()
+            if isinstance(self._data.targets, torch.Tensor):
+                labels = self._data.targets.numpy()
+            elif isinstance(self._data.targets, list):
+                labels = np.array(self._data.targets)
             random_indices, _ = train_test_split(full_idxs, train_size=subset_fraction, stratify=labels)
             subset = Subset(self._data, indices=random_indices)
 
@@ -474,4 +477,4 @@ class NSGA2():
 
                 #checkpoint only if NOT BOUND ESTIMATION
                 self._gen +=1
-                self._checkpoint(f"./nsga_{gen}_")
+                # self._checkpoint(f"./checkpoints/nsga_{gen}_")

@@ -1,13 +1,14 @@
 import time
 import sys
 import random
+import json
 
 import numpy as np
 from matplotlib import pyplot as plt
 
 import torch
 from torchvision import transforms
-from torchvision.datasets import MNIST
+from torchvision.datasets import MNIST, CIFAR10
 from torch.utils.data import DataLoader, Subset
 from architectures import TinyFlexyConvAE, FlexyConvAE
 import nsga2
@@ -20,24 +21,32 @@ mytransform = transforms.ToTensor()
 train_data = MNIST("./datasets", download=False, train=True, transform=mytransform)
 test_data = MNIST("./datasets", download=False, train=False, transform=mytransform)
 
+# train_data = CIFAR10("./datasets", download=False, train=True, transform=mytransform)
+# test_data = CIFAR10("./datasets", download=False, train=False, transform=mytransform)
+
 train_loader = DataLoader(train_data, batch_size=30)
 test_loader = DataLoader(test_data, batch_size=30)
 
-experiments = 7
+mnist = (1, 28, 28)
+cifar = (3, 32, 32)
+
+pop = 10
+exps = 30
 seed = 42
 avg_convs = []
 convs_in_time = []
 
 _, ax = plt.subplots(figsize=(10, 10))
-for e in range(experiments):
+for e in range(exps):
     print(f"\nBeginning experiment {e}")
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     
     evolver = nsga2.NSGA2(
-        pop_size=10,
+        pop_size=pop,
         model=TinyFlexyConvAE,
+        input_shape=mnist,
         interval=[1, 7],
         data=train_data
     )
@@ -75,6 +84,14 @@ for e in range(experiments):
     ax.plot(range(len(conv)), conv, alpha=0.4, color="lightblue")
     
 
+with open(f"MNIST_{pop}_{exps}.json", "w") as f:
+    json.dump({"avg_convs": avg_convs, "convs_in_time": convs_in_time})
+
+# with open(f"MNIST_{pop}_{exps}.json", "r") as f:
+#     data = json.load(f)
+#     avg_convs = data["avg_convs"]
+#     convs_in_time = data["convs_in_time"]
+
 # group convergence across experiments by generation
 avg_conv_per_gen = [sum(i)/len(i) for i in zip(*convs_in_time)]
 
@@ -89,3 +106,4 @@ plt.show()
 # go = input("wanna plot?")
 # if go:
 #     evolution.plot_evolution()
+
