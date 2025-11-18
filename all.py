@@ -63,7 +63,7 @@ def remodel(embedded, original_size, model, biggest):
 
 
 # rename to distinguish from crossover() in genalgo?
-def crossover(parent1: torch.Tensor, parent2: torch.Tensor)-> tuple[torch.Tensor, torch.Tensor]:
+def crossover(parent1: tuple, parent2: tuple)-> tuple[torch.Tensor, torch.Tensor]:
     """
     masked crossover between two flat models:
     Args:
@@ -73,7 +73,7 @@ def crossover(parent1: torch.Tensor, parent2: torch.Tensor)-> tuple[torch.Tensor
     flat1, s, a = parent1
     flat2, _, _ = parent2
     
-    device = parent1.device 
+    device = flat1.device 
     mask = torch.randint(0, 2, flat1.shape, dtype=torch.bool, device=device) # mask with zeroes and ones
     child1 = (torch.where(mask, flat1, flat2), s, a)
     child2 = (torch.where(mask, flat2, flat1), s, a)
@@ -111,6 +111,9 @@ def model_fitness(data: DataLoader, problem="AE"):
     returns a fitness function that computes 1/avg_loss = avg_fitness
     across batches given a model
 
+    ⛔️ using non_blocking + pin_memory (DataLoader at the start of evolve):
+    https://docs.pytorch.org/tutorials/intermediate/pinmem_nonblock.html
+
     Args:
         problem: either "regression", "classification" or default (AE).
     """
@@ -130,7 +133,8 @@ def model_fitness(data: DataLoader, problem="AE"):
         with torch.no_grad():
             tot_loss = 0
             for X, y in data:
-                X, y = X.to(device), out(X, y).to(device)
+                X = X.to(device, non_blocking=True)
+                y = out(X, y).to(device, non_blocking=True)
                 pred = model(X)
                 loss = loss_fn(pred, y)
                 tot_loss += loss.item()   # ⛔️SPIKING FITNESS if avg_loss very small
@@ -534,10 +538,13 @@ class NSGA2():
                 labels = self._data.targets.numpy()
             elif isinstance(self._data.targets, list):
                 labels = np.array(self._data.targets)
+            
             random_indices, _ = train_test_split(full_idxs, train_size=subset_fraction, stratify=labels)
             subset = Subset(self._data, indices=random_indices)
 
-            train_loader = DataLoader(subset, batch_size=30)
+            train_loader = DataLoader(
+                subset, batch_size=30, shuffle=True, pin_memory=True
+            )
             fit_fn_1 = self._fit_fn_1(train_loader, self._problem)
             fit_fn_2 = self._fit_fn_2(train_loader)
 
