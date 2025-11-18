@@ -265,22 +265,24 @@ class ConvClassifier(nn.Module):
         return output
     
 
-class ConvClassifier(nn.Module):
+class TinyConvClassifier(nn.Module):
     def __init__(
             self,
             input_shape=(1, 28, 28),
             stride=2,
             padding=1,
             kernel=3,
-            nonlinearity=nn.ReLU
+            nonlinearity=nn.ReLU,
+            classes=10
     ):
         super().__init__()
-        self._input = input_shape[1]
         self._channels = input_shape[0]
+        self._input = input_shape[1]
         self._stride = stride
         self._pad = padding
         self._kernel = kernel
         self._nonl = nonlinearity
+        self._classes = classes
 
         self.encoder = nn.Sequential(
             nn.Conv2d(
@@ -293,7 +295,19 @@ class ConvClassifier(nn.Module):
             self._nonl()
         )
 
-
+        fake_data = torch.zeros(1, self._channels, self._input, self._input)
+        fake_output = self.encoder(fake_data)
+        fake_shape = fake_output.shape
+        flat = fake_shape[1]*fake_shape[2]*fake_shape[3]
+        self.classifier_head = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(flat, self._classes)
+        )
 
     def get_stride(self):
         return self._stride
+    
+    def forward(self, data):
+        output = self.encoder(data)
+        output = self.classifier_head(output)
+        return output
