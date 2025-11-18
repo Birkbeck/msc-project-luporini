@@ -256,7 +256,11 @@ class NSGA2():
         checkpoint = torch.load(filepath)
         
         population = checkpoint["population"]
-        self._population = [model(stride=s, weights=state) for state, s in population]
+        self._population = []
+        for state, s in population:
+            m = model(stride=s)
+            m.load_state_dict(state)
+            self._population.append(m)
         self._initialise_islands()
         self._pop_size = checkpoint["pop_size"]
 
