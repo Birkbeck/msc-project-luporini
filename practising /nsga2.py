@@ -157,6 +157,48 @@ class NSGA2():
         - initialise islands????????
         - need the right 'problem' when initialising the Island class!!!
     """
+    def __init__(
+            self,
+            pop_size,
+            model,
+            data,
+            input_shape=(1, 28, 28),
+            interval=[1, 4], # small interval compared to pop_size? ⛔️ representativeness
+            problem = "AE"
+    ):
+        self._islands = None
+        self._data = data
+        self._input_shape = input_shape
+        self._model = model # needs to be a class, not an istance!
+        self._problem = problem
+        self._pop_size = pop_size
+        self._population = [
+            deepcopy(
+                model(
+                    input_shape=input_shape,
+                    stride=random.randint(interval[0], interval[1])
+                )
+            ) for i in range(pop_size)
+        ]
+
+        self._fit_fn_1 = model_fitness#(data, problem=problem) #model_fitness is HIGHER ORDER
+        self._fit_fn_2 = model_runtime#(data)
+        self._fitnesses_1 = None
+        self._fitnesses_2 = None # why was it missing⁉️⁉️⁉️⁉️⁉️⁉️⁉️
+        self._convergence = [] # list of lists: normalised distances per generation
+        self._best_model = None
+        self._best_convergence = None
+        self._emp_bounds_1 = None # empirical bounds per objective
+        self._emp_bounds_2 = None
+
+        self._biggest = max(
+            sum(param.numel() for param in m.parameters()) # ⛔️ will change mid run????
+            for m in self._population
+        )
+
+        self._gen = 0
+        self._max_gen = None
+    
     def _initialise_islands(self):
         self._islands = defaultdict(list)
         for m in self._population:
@@ -171,14 +213,6 @@ class NSGA2():
         mino, maxo = min(fitnesses), max(fitnesses)
         bounds = (min(mino, bound[0]), max(maxo, bound[1]))
         return bounds
-    
-    # def _normalise_fitnesses(self):
-    #     # normalise fitness space between 0, 1 using empirical bounds
-    #     mino1, maxo1 = self._emp_bounds_1[0], self._emp_bounds_1[1]
-    #     mino2, maxo2 = self._emp_bounds_2[0], self._emp_bounds_2[1]
-    #     normalised_x = normalise_fitness(self._fitnesses_1, mino1, maxo1) # x fitness
-    #     normalised_y = normalise_fitness(self._fitnesses_2, mino2, maxo2) # y speed
-    #     return normalised_x, normalised_y
     
     def _estimate_convergence(self):
         normalised_x = normalise_fitness(self._fitnesses_1, self._emp_bounds_1) # x fitness
@@ -202,42 +236,44 @@ class NSGA2():
                 self._best_model = deepcopy(best_model)
                 self._best_convergence = best_convergence
     
-    def __init__(
-            self,
-            pop_size,
-            model,
-            data,
-            input_shape=(1, 28, 28),
-            interval=[1, 4], # small interval compared to pop_size? ⛔️ representativeness
-            problem = "AE"
-    ):
-        self._islands = None
-        self._data = data
-        self._model = model # needs to be a class, not an istance!
-        self._problem = problem
-        self._pop_size = pop_size
-        self._population = [
-            deepcopy(
-                model(
-                    input_shape=input_shape,
-                    stride=random.randint(interval[0], interval[1])
-                )
-            ) for i in range(pop_size)
-        ]
+    def _checkpoint(self, filepath):
+        obj = {
+            "population": [(m.state_dict(), m.get_stride()) for m in self._population],
+            "problem": self._problem,
+            "pop_size": self._pop_size,
+            "convergence": self._convergence, 
+            "best_model": (self._best_model.state_dict(), self._best_model.get_stride()),
+            "best_convergence": self._best_convergence,
+            "emp_bounds_1": self._emp_bounds_1,
+            "emp_bounds_2": self._emp_bounds_2,
+            "biggest": self._biggest,
+            "gen": self._gen,
+            "max_gen": self._max_gen
+        }
+        torch.save(obj, filepath)
+    
+    def load_checkpoint(self, filepath, model):
+        checkpoint = torch.load(filepath)
+        
+        population = checkpoint["population"]
+        self._population = [model(stride=s, weights=state) for state, s in population]
+        self._initialise_islands()
+        self._pop_size = checkpoint["pop_size"]
 
-        self._fit_fn_1 = model_fitness#(data, problem=problem) #model_fitness is HIGHER ORDER
-        self._fit_fn_2 = model_runtime#(data)
-        self._fitnesses_1 = None
-        self._convergence = [] # list of lists: normalised distances per generation
-        self._best_model = None
-        self._best_convergence = None
-        self._emp_bounds_1 = None # empirical bounds per objective
-        self._emp_bounds_2 = None
+        self._problem = checkpoint["problem"]
+        self._convergence = checkpoint["convergence"]
+        
+        weights, s = checkpoint["best_model"]
+        best = model(stride=s)
+        best.load_state_dict(weights)
+        self._best_model = best
+        self._best_convergence = checkpoint["best_convergence"]
 
-        self._biggest = max(
-            sum(param.numel() for param in m.parameters()) # ⛔️ will change mid run????
-            for m in self._population
-        )
+        self._emp_bounds_1 = checkpoint["emp_bounds_1"]
+        self._emp_bounds_2 = checkpoint["emp_bounds_2"]
+        self._biggest = checkpoint["biggest"]
+        self._gen = checkpoint["gen"]
+        self._max_gen = checkpoint["max_gen"]
 
     def get_best(self):
         best = self._best_model, self._best_convergence
@@ -273,7 +309,14 @@ class NSGA2():
         plt.show()
     
     def reset(self, model, pop_size, interval, bound1, bound2):
-        self._population = initialise_population(model, pop_size, interval)
+        self._population = self._population = [
+            deepcopy(
+                model(
+                    input_shape=self._input_shape,
+                    stride=random.randint(interval[0], interval[1])
+                )
+            ) for i in range(pop_size)
+        ]
         self._fitnesses_1 = None
         self._fitnesses_2 = None
         self._convergence = [] # list of lists: normalised distances per generation
@@ -281,6 +324,8 @@ class NSGA2():
         self._best_convergence = None
         self._emp_bounds_1 = bound1 # empirical bounds per objective
         self._emp_bounds_2 = bound2
+        self._gen = 0
+        self._max_gen = None
 
     def transfer(self, model, bound1, bound2, freeze=False):
         """should I just swap the new pop in??"""
@@ -314,8 +359,10 @@ class NSGA2():
             report_jump=2,        # UNUSED ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
             m_prob=0.3
     ):
+        if self._max_gen is None:
+            self._max_gen = generations
         
-        for gen in range(generations):
+        for gen in range(self._gen, self._max_gen):
 
             full_idxs = list(range(len(self._data)))
             labels = self._data.targets.numpy()
@@ -421,7 +468,6 @@ class NSGA2():
             else:
                 self._estimate_convergence()
 
-
-    
-            
-             
+                #checkpoint only if NOT BOUND ESTIMATION
+                self._gen +=1
+                self._checkpoint(f"./nsga_{gen}_")
