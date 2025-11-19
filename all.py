@@ -526,131 +526,134 @@ class NSGA2():
             bound_estimation=True,
             generations=10,
             subset_fraction=0.07,
-            report_jump=2,        # UNUSED ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
-            m_prob=0.3
+            m_prob=0.3,
+            checkpoint=False
     ):
-        if self._max_gen is None:
-            self._max_gen = generations
-        
-        for gen in range(self._gen, self._max_gen):
-
-            full_idxs = list(range(len(self._data)))
-            if isinstance(self._data.targets, torch.Tensor):
-                labels = self._data.targets.numpy()
-            elif isinstance(self._data.targets, list):
-                labels = np.array(self._data.targets)
+        if checkpoint:  # ⁉️⁉️⁉️⁉️⁉️⁉️⁉️
+            pass
+        else:
+            if self._max_gen is None:
+                self._max_gen = generations
             
-            random_indices, _ = train_test_split(full_idxs, train_size=subset_fraction, stratify=labels)
-            subset = Subset(self._data, indices=random_indices)
+            for gen in range(self._gen, self._max_gen):
 
-            train_loader = DataLoader(
-                subset, batch_size=30, shuffle=True, pin_memory=True
-            )
-            fit_fn_1 = self._fit_fn_1(train_loader, self._problem)
-            fit_fn_2 = self._fit_fn_2(train_loader)
-
-            ################################################
-            if gen == 0:
-                self._initialise_islands()
-            print(f"gen {gen} | topologies: {len(self._islands)}")
-            ################################################
-            
-            self._fitnesses_1 = group_fitness(self._population, fit_fn_1)
-            self._fitnesses_2 = group_fitness(self._population, fit_fn_2)
-            
-            # mating events, either within(more likely) or between(less likely)
-            children = [] # TOURNAMENT 🔥
-            for _ in range(self._pop_size//2):
-                if random.random() < 0.1 and len(self._islands)>= 2: # unlikely cross-species crossover 🔥
-                    random_keys = random.sample(list(self._islands.keys()), k=2)
-                    key1, key2 = random_keys[0], random_keys[1]
-                    pool1, pool2 = self._islands[key1], self._islands[key2]
-                    parent1, parent2 = random.choice(pool1), random.choice(pool2)
-                    parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
-                else: # regular intraspecies crossover 🔥
-                    key = random.choice(list(self._islands.keys()))
-                    pool = self._islands[key]
-                    if len(pool) == 1:
-                        parent1, parent2 = pool[0], deepcopy(pool[0])
-                        parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
-                    elif len(pool) == 2:
-                        parent1, parent2 = pool[0], pool[1]
-                        parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
-                    else:
-                        parents = random.sample(pool, k=2)
-                        parent1, parent2 = parents[0], parents[1]
-                        parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
+                full_idxs = list(range(len(self._data)))
+                if isinstance(self._data.targets, torch.Tensor):
+                    labels = self._data.targets.numpy()
+                elif isinstance(self._data.targets, list):
+                    labels = np.array(self._data.targets)
                 
-                child1, child2 = crossover(parent1, parent2)
-                child1 = (mutate(child1[0]), child1[1], child1[2]) # mutate 50% of genes
-                child2 = (mutate(child2[0]), child2[1], child2[2]) # mutate 50% of genes
-                
-                children.extend([child1, child2])
+                random_indices, _ = train_test_split(full_idxs, train_size=subset_fraction, stratify=labels)
+                subset = Subset(self._data, indices=random_indices)
 
-                                    # remodel(f,s,a,biggest)–>model!
-            remodelled_children = [remodel(f, s, a, self._biggest) for f, s, a in children]
-            children_fitnesses_1 = group_fitness(remodelled_children, fit_fn_1)
-            children_fitnesses_2 = group_fitness(remodelled_children, fit_fn_2)
-            all_solutions = self._population + remodelled_children
-            all_fitnesses_1 = self._fitnesses_1 + children_fitnesses_1
-            all_fitnesses_2 = self._fitnesses_2 + children_fitnesses_2
-            
-            assert len(self._population) == self._pop_size
-            assert len(self._fitnesses_1) == self._pop_size
-            assert len(self._fitnesses_2) == self._pop_size
+                train_loader = DataLoader(
+                    subset, batch_size=30, shuffle=True, pin_memory=True
+                )
+                fit_fn_1 = self._fit_fn_1(train_loader, self._problem)
+                fit_fn_2 = self._fit_fn_2(train_loader)
 
-            fronts = non_dominated_sorting(
-                all_solutions, all_fitnesses_1, all_fitnesses_2
-            )
-            
-            
-            solutions = []
-            for front in fronts:
-                if len(solutions) + len(front) < self._pop_size:
-                    solutions.extend(front)
-                elif len(solutions) + len(front) == self._pop_size:
-                    solutions.extend(front)
-                    break
-                else:
-                    distance = crowding_distance(front, all_fitnesses_1, all_fitnesses_2)
-                    descending_distance = sorted(front, key=lambda idx: distance[idx], reverse=True)
-                    free = self._pop_size - len(solutions)
-                    solutions.extend(descending_distance[:free])
-                    break
-
-            self._population = [all_solutions[s] for s in solutions]
-            self._fitnesses_1 = [all_fitnesses_1[s] for s in solutions]
-            self._fitnesses_2 = [all_fitnesses_2[s] for s in solutions]
-
-
-            self._initialise_islands()
-
-
-            current_biggest = max(
-                sum(param.numel() for param in m.parameters()) 
-                for m in self._population
-            )
-            if current_biggest != self._biggest:
-                self._biggest = current_biggest
-
-
-            if bound_estimation:
+                ################################################
                 if gen == 0:
-                    b1 = (min(self._fitnesses_1), max(self._fitnesses_1))
-                    b2 = (min(self._fitnesses_2), max(self._fitnesses_2))
-                    bounds1 = self._bounds_estimation(self._fitnesses_1, b1)
-                    bounds2 = self._bounds_estimation(self._fitnesses_2, b2)
-                    self._emp_bounds_1 = bounds1
-                    self._emp_bounds_2 = bounds2
-                else:
-                    bounds1 = self._bounds_estimation(self._fitnesses_1, self._emp_bounds_1)
-                    bounds2 = self._bounds_estimation(self._fitnesses_2, self._emp_bounds_2)
-                    self._emp_bounds_1 = bounds1
-                    self._emp_bounds_2 = bounds2
-            else:
-                self._estimate_convergence()
+                    self._initialise_islands()
+                print(f"gen {gen} | topologies: {len(self._islands)}")
+                ################################################
+                
+                self._fitnesses_1 = group_fitness(self._population, fit_fn_1)
+                self._fitnesses_2 = group_fitness(self._population, fit_fn_2)
+                
+                # mating events, either within(more likely) or between(less likely)
+                children = [] # TOURNAMENT 🔥
+                for _ in range(self._pop_size//2):
+                    if random.random() < 0.1 and len(self._islands)>= 2: # unlikely cross-species crossover 🔥
+                        random_keys = random.sample(list(self._islands.keys()), k=2)
+                        key1, key2 = random_keys[0], random_keys[1]
+                        pool1, pool2 = self._islands[key1], self._islands[key2]
+                        parent1, parent2 = random.choice(pool1), random.choice(pool2)
+                        parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
+                    else: # regular intraspecies crossover 🔥
+                        key = random.choice(list(self._islands.keys()))
+                        pool = self._islands[key]
+                        if len(pool) == 1:
+                            parent1, parent2 = pool[0], deepcopy(pool[0])
+                            parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
+                        elif len(pool) == 2:
+                            parent1, parent2 = pool[0], pool[1]
+                            parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
+                        else:
+                            parents = random.sample(pool, k=2)
+                            parent1, parent2 = parents[0], parents[1]
+                            parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
+                    
+                    child1, child2 = crossover(parent1, parent2)
+                    child1 = (mutate(child1[0]), child1[1], child1[2]) # mutate 50% of genes
+                    child2 = (mutate(child2[0]), child2[1], child2[2]) # mutate 50% of genes
+                    
+                    children.extend([child1, child2])
 
-                #checkpoint only if NOT BOUND ESTIMATION
-                self._gen +=1
-                assert os.path.isdir("./checkpoints")
-                self._checkpoint("./checkpoints/nsga.pth")
+                                        # remodel(f,s,a,biggest)–>model!
+                remodelled_children = [remodel(f, s, a, self._biggest) for f, s, a in children]
+                children_fitnesses_1 = group_fitness(remodelled_children, fit_fn_1)
+                children_fitnesses_2 = group_fitness(remodelled_children, fit_fn_2)
+                all_solutions = self._population + remodelled_children
+                all_fitnesses_1 = self._fitnesses_1 + children_fitnesses_1
+                all_fitnesses_2 = self._fitnesses_2 + children_fitnesses_2
+                
+                assert len(self._population) == self._pop_size
+                assert len(self._fitnesses_1) == self._pop_size
+                assert len(self._fitnesses_2) == self._pop_size
+
+                fronts = non_dominated_sorting(
+                    all_solutions, all_fitnesses_1, all_fitnesses_2
+                )
+                
+                
+                solutions = []
+                for front in fronts:
+                    if len(solutions) + len(front) < self._pop_size:
+                        solutions.extend(front)
+                    elif len(solutions) + len(front) == self._pop_size:
+                        solutions.extend(front)
+                        break
+                    else:
+                        distance = crowding_distance(front, all_fitnesses_1, all_fitnesses_2)
+                        descending_distance = sorted(front, key=lambda idx: distance[idx], reverse=True)
+                        free = self._pop_size - len(solutions)
+                        solutions.extend(descending_distance[:free])
+                        break
+
+                self._population = [all_solutions[s] for s in solutions]
+                self._fitnesses_1 = [all_fitnesses_1[s] for s in solutions]
+                self._fitnesses_2 = [all_fitnesses_2[s] for s in solutions]
+
+
+                self._initialise_islands()
+
+
+                current_biggest = max(
+                    sum(param.numel() for param in m.parameters()) 
+                    for m in self._population
+                )
+                if current_biggest != self._biggest:
+                    self._biggest = current_biggest
+
+
+                if bound_estimation:
+                    if gen == 0:
+                        b1 = (min(self._fitnesses_1), max(self._fitnesses_1))
+                        b2 = (min(self._fitnesses_2), max(self._fitnesses_2))
+                        bounds1 = self._bounds_estimation(self._fitnesses_1, b1)
+                        bounds2 = self._bounds_estimation(self._fitnesses_2, b2)
+                        self._emp_bounds_1 = bounds1
+                        self._emp_bounds_2 = bounds2
+                    else:
+                        bounds1 = self._bounds_estimation(self._fitnesses_1, self._emp_bounds_1)
+                        bounds2 = self._bounds_estimation(self._fitnesses_2, self._emp_bounds_2)
+                        self._emp_bounds_1 = bounds1
+                        self._emp_bounds_2 = bounds2
+                else:
+                    self._estimate_convergence()
+
+                    #checkpoint only if NOT BOUND ESTIMATION
+                    self._gen +=1
+                    assert os.path.isdir("./checkpoints")
+                    self._checkpoint("./checkpoints/nsga.pth")

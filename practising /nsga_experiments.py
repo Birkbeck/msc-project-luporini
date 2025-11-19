@@ -36,7 +36,7 @@ cifar = (3, 32, 32)
 ######### set the experiments #################
 ################################################
 m = TinyConvClassifier
-pop = 50
+pop = 40
 exps = 30
 probl = "classification"
 seed = 42
