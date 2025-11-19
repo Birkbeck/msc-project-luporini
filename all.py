@@ -1,3 +1,5 @@
+import os
+
 import random
 import time
 from copy import deepcopy
@@ -425,6 +427,7 @@ class NSGA2():
             "gen": self._gen,
             "max_gen": self._max_gen
         }
+        # os.mkdirs("./checkpoints", exist_ok=True) # ⁉️
         torch.save(obj, filepath)
     
     def load_checkpoint(self, filepath, model):
@@ -649,4 +652,5 @@ class NSGA2():
 
                 #checkpoint only if NOT BOUND ESTIMATION
                 self._gen +=1
-                # self._checkpoint(f"./checkpoints/nsga_{gen}_")
+                assert os.path.isdir("./checkpoints")
+                self._checkpoint("./checkpoints/nsga.pth")

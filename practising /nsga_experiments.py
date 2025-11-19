@@ -9,7 +9,7 @@ from rainclouds import rainclouds
 
 import torch
 from torchvision import transforms
-from torchvision.datasets import MNIST, CIFAR10
+from torchvision.datasets import MNIST, KMNIST, CIFAR10, FashionMNIST
 from torch.utils.data import DataLoader, Subset
 from architectures import TinyFlexyConvAE, TinyConvClassifier
 import all
@@ -38,7 +38,7 @@ cifar = (3, 32, 32)
 m = TinyConvClassifier
 pop = 50
 exps = 30
-prob = "classification"
+probl = "classification"
 seed = 42
 avg_convs = []
 convs_in_time = []
@@ -56,7 +56,7 @@ for e in range(exps):
         input_shape=mnist,
         interval=[1, 7],
         data=train_data,
-        problem=prob
+        problem=probl
     )
 
         # exploratory runs for empirical min/max
@@ -94,8 +94,8 @@ for e in range(exps):
 ################################################
 ######## save results #########################
 ################################################
-# with open(f"MNIST_{prob}_{pop}_{exps}.json", "w") as f:
-#     json.dump({"avg_convs": avg_convs, "convs_in_time": convs_in_time})
+with open(f"MNIST_{probl}_{pop}_{exps}.json", "w") as f:
+    json.dump({"avg_convs": avg_convs, "convs_in_time": convs_in_time})
 
 # with open(f"MNIST_{pop}_{exps}.json", "r") as f:
 #     data = json.load(f)
