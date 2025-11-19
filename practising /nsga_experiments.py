@@ -36,9 +36,10 @@ cifar = (3, 32, 32)
 ######### set the experiments #################
 ################################################
 m = TinyConvClassifier
-pop = 40
+pop = 10
 exps = 30
 probl = "classification"
+inter = [2, 6]
 seed = 42
 avg_convs = []
 convs_in_time = []
@@ -54,7 +55,7 @@ for e in range(exps):
         pop_size=pop,
         model=m,
         input_shape=mnist,
-        interval=[1, 7],
+        interval=inter,
         data=train_data,
         problem=probl
     )
@@ -64,12 +65,13 @@ for e in range(exps):
     evolver.evolve(
         generations=2,
         bound_estimation=True,
-        m_prob=0.3
+        m_prob=0.3,
+        checkpoint=False
     )
 
     b1, b2 = evolver.get_bounds()
     evolver.reset(
-        m, 10, interval=[1, 7], bound1=b1, bound2=b2
+        m, 10, interval=inter, bound1=b1, bound2=b2
     )
 
     # actual evolution
@@ -77,7 +79,8 @@ for e in range(exps):
     evolver.evolve(
         generations=5,
         bound_estimation=False,
-        m_prob=0.3
+        m_prob=0.3,
+        checkpoint=False
     )
 
 
