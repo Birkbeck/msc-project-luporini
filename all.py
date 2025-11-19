@@ -374,7 +374,7 @@ class NSGA2():
     def _initialise_fitness(self):
         self._fitness = group_fitness(self._population, self._fit_fn)
     
-    def _bounds_estimation(sel, fitnesses, bound):
+    def _bounds_estimation(self, fitnesses, bound):
         """update (or not) bounds"""
         mino, maxo = min(fitnesses), max(fitnesses)
         bounds = (min(mino, bound[0]), max(maxo, bound[1]))
@@ -568,8 +568,11 @@ class NSGA2():
                     key = random.choice(list(self._islands.keys()))
                     pool = self._islands[key]
                     if len(pool) == 1:
-                        # parent1, parent2 = pool[0], deepcopy(pool[0])
-                        continue
+                        parent1, parent2 = pool[0], deepcopy(pool[0])
+                        parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
+                    elif len(pool) == 2:
+                        parent1, parent2 = pool[0], pool[1]
+                        parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
                     else:
                         parents = random.sample(pool, k=2)
                         parent1, parent2 = parents[0], parents[1]
@@ -589,7 +592,10 @@ class NSGA2():
             all_fitnesses_1 = self._fitnesses_1 + children_fitnesses_1
             all_fitnesses_2 = self._fitnesses_2 + children_fitnesses_2
             
-            
+            assert len(self._population) == self._pop_size
+            assert len(self._fitnesses_1) == self._pop_size
+            assert len(self._fitnesses_2) == self._pop_size
+
             fronts = non_dominated_sorting(
                 all_solutions, all_fitnesses_1, all_fitnesses_2
             )

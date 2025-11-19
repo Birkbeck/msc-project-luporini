@@ -1,18 +1,19 @@
 import time
 import sys
-import random
 import json
 
+import random
 import numpy as np
 from matplotlib import pyplot as plt
+from rainclouds import rainclouds
 
 import torch
 from torchvision import transforms
 from torchvision.datasets import MNIST, CIFAR10
 from torch.utils.data import DataLoader, Subset
 from architectures import TinyFlexyConvAE, TinyConvClassifier
-import nsga2
-from rainclouds import rainclouds
+import all
+
 
 ###############################################
 ######## get the data ########################
@@ -49,7 +50,7 @@ for e in range(exps):
     np.random.seed(seed)
     torch.manual_seed(seed)
     
-    evolver = nsga2.NSGA2(
+    evolver = all.NSGA2(
         pop_size=pop,
         model=m,
         input_shape=mnist,
@@ -93,8 +94,8 @@ for e in range(exps):
 ################################################
 ######## save results #########################
 ################################################
-with open(f"MNIST_{prob}_{pop}_{exps}.json", "w") as f:
-    json.dump({"avg_convs": avg_convs, "convs_in_time": convs_in_time})
+# with open(f"MNIST_{prob}_{pop}_{exps}.json", "w") as f:
+#     json.dump({"avg_convs": avg_convs, "convs_in_time": convs_in_time})
 
 # with open(f"MNIST_{pop}_{exps}.json", "r") as f:
 #     data = json.load(f)
@@ -105,13 +106,13 @@ with open(f"MNIST_{prob}_{pop}_{exps}.json", "w") as f:
 ######## plot convergence #####################
 ################################################
 # group convergence across experiments by generation
-avg_conv_per_gen = [sum(i)/len(i) for i in zip(*convs_in_time)]
+# avg_conv_per_gen = [sum(i)/len(i) for i in zip(*convs_in_time)]
 
-ax.plot(range(len(avg_conv_per_gen)), avg_conv_per_gen, color="tomato")
-ax.set_xlabel("generations")
-ax.set_ylabel("avg. distance from ideal solution")
+# ax.plot(range(len(avg_conv_per_gen)), avg_conv_per_gen, color="tomato")
+# ax.set_xlabel("generations")
+# ax.set_ylabel("avg. distance from ideal solution")
 
-plt.show()
+# plt.show()
 
 
 # # plot
