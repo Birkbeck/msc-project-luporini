@@ -2,6 +2,7 @@ import os
 
 import random
 import time
+import copy
 from copy import deepcopy
 from collections import defaultdict
 import math
@@ -32,7 +33,7 @@ def embed(model, biggest):
     sigma = flat.std().item()
 
     size = flat.numel()
-    difference = biggest - size
+    difference = biggest - size # 
     if difference % 2 == 0:
         lx_pad_size = difference // 2
         rx_pad_size = lx_pad_size
@@ -373,8 +374,31 @@ class NSGA2():
             key = m.get_stride()
             self._islands[key].append(m)
     
+    def _check_biggest(self):
+        current_biggest = max(
+            sum(param.numel() for param in m.parameters()) 
+                for m in self._population
+        )
+        if current_biggest != self._biggest:
+            self._biggest = current_biggest
+    
     def _initialise_fitness(self):
         self._fitness = group_fitness(self._population, self._fit_fn)
+    
+    def _sample_loader(self, fraction):
+        full_idxs = list(range(len(self._data)))
+        if isinstance(self._data.targets, torch.Tensor):
+            labels = self._data.targets.numpy()
+        elif isinstance(self._data.targets, list):
+            labels = np.array(self._data.targets)
+            
+        random_indices, _ = train_test_split(full_idxs, train_size=fraction, stratify=labels)
+        subset = Subset(self._data, indices=random_indices)
+
+        loader = DataLoader(
+            subset, batch_size=30, shuffle=True, pin_memory=True
+        )
+        return loader
     
     def _bounds_estimation(self, fitnesses, bound):
         """update (or not) bounds"""
@@ -530,28 +554,21 @@ class NSGA2():
             subset_fraction=0.07,
             m_prob=0.3
     ):
+
         if checkpoint:
             self._load_checkpoint(checkpoint_path, self._model)
         
         if self._max_gen is None:
             self._max_gen = generations
         
+        ###########################################
+        ############ EVOLUTION LOOP ###############
+        ###########################################
         for gen in range(self._gen, self._max_gen):
 
-            full_idxs = list(range(len(self._data)))
-            if isinstance(self._data.targets, torch.Tensor):
-                labels = self._data.targets.numpy()
-            elif isinstance(self._data.targets, list):
-                labels = np.array(self._data.targets)
-            
-            random_indices, _ = train_test_split(full_idxs, train_size=subset_fraction, stratify=labels)
-            subset = Subset(self._data, indices=random_indices)
-
-            train_loader = DataLoader(
-                subset, batch_size=30, shuffle=True, pin_memory=True
-            )
-            fit_fn_1 = self._fit_fn_1(train_loader, self._problem)
-            fit_fn_2 = self._fit_fn_2(train_loader)
+            loader_sample = self._sample_loader(subset_fraction)
+            fit_fn_1 = self._fit_fn_1(loader_sample, self._problem)
+            fit_fn_2 = self._fit_fn_2(loader_sample)
 
             ################################################
             if gen == 0:
@@ -564,6 +581,7 @@ class NSGA2():
             
             # mating events, either within(more likely) or between(less likely)
             children = [] # TOURNAMENT 🔥
+            self._check_biggest()
             for _ in range(self._pop_size//2):
                 if random.random() < 0.1 and len(self._islands)>= 2: # unlikely cross-species crossover 🔥
                     random_keys = random.sample(list(self._islands.keys()), k=2)
@@ -585,6 +603,8 @@ class NSGA2():
                         parent1, parent2 = parents[0], parents[1]
                         parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
                 
+                self._check_biggest()
+
                 child1, child2 = crossover(parent1, parent2)
                 child1 = (mutate(child1[0]), child1[1], child1[2]) # mutate 50% of genes
                 child2 = (mutate(child2[0]), child2[1], child2[2]) # mutate 50% of genes
@@ -629,14 +649,7 @@ class NSGA2():
 
             self._initialise_islands()
 
-
-            current_biggest = max(
-                sum(param.numel() for param in m.parameters()) 
-                for m in self._population
-            )
-            if current_biggest != self._biggest:
-                self._biggest = current_biggest
-
+            self._check_biggest()
 
             if bound_estimation:
                 if gen == 0:

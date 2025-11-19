@@ -37,7 +37,9 @@ cifar = (3, 32, 32)
 ################################################
 m = TinyConvClassifier
 pop = 10
-exps = 30
+exps = 1 # number of experiments
+bound_g = 2 # bound exploration gens
+evo_g = 10 # actual evolution gens
 probl = "classification"
 inter = [2, 6]
 seed = 42
@@ -63,7 +65,7 @@ for e in range(exps):
         # exploratory runs for empirical min/max
     print("\n- estimating the bounds..")
     evolver.evolve(
-        generations=2,
+        generations=bound_g,
         bound_estimation=True,
         m_prob=0.3,
         checkpoint=False
@@ -77,7 +79,7 @@ for e in range(exps):
     # actual evolution
     print("- actual evolution..")
     evolver.evolve(
-        generations=5,
+        generations=evo_g,
         bound_estimation=False,
         m_prob=0.3,
         checkpoint=False
