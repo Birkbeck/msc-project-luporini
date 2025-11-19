@@ -100,7 +100,7 @@ for e in range(exps):
 ######## save results #########################
 ################################################
 with open(f"MNIST_{probl}_{pop}_{exps}.json", "w") as f:
-    json.dump({"avg_convs": avg_convs, "convs_in_time": convs_in_time})
+    json.dump({"avg_convs": avg_convs, "convs_in_time": convs_in_time}, f)
 
 # with open(f"MNIST_{pop}_{exps}.json", "r") as f:
 #     data = json.load(f)

@@ -30,7 +30,6 @@ def embed(model, biggest):
     device = next(model.parameters()).device
     flat = flatten(model)
     mu = flat.mean().item()
-    sigma = flat.std().item()
 
     size = flat.numel()
     difference = biggest - size # 
@@ -42,8 +41,8 @@ def embed(model, biggest):
         rx_pad_size = difference - lx_pad_size
     
     # ⛔️: every time embed() called, torch.random introduces randomness
-    lx_padding = torch.normal(mu, sigma, (lx_pad_size,), dtype=flat.dtype, device=device)
-    rx_padding = torch.normal(mu, sigma, (rx_pad_size,), dtype=flat.dtype, device=device)
+    lx_padding = torch.full((lx_pad_size,), mu, dtype=flat.dtype, device=device)
+    rx_padding = torch.normal((rx_pad_size,), mu, dtype=flat.dtype, device=device)
 
     return (
         torch.cat([lx_padding, flat, rx_padding]), size, model
