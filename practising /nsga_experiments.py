@@ -37,10 +37,11 @@ cifar = (3, 32, 32)
 ################################################
 m = TinyConvClassifier
 pop = 10
+dataset = "mnist"
+probl = "classification"
 exps = 1 # number of experiments
 bound_g = 2 # bound exploration gens
 evo_g = 10 # actual evolution gens
-probl = "classification"
 inter = [2, 6]
 seed = 42
 avg_convs = []
@@ -67,7 +68,6 @@ for e in range(exps):
     evolver.evolve(
         generations=bound_g,
         bound_estimation=True,
-        m_prob=0.3,
         checkpoint=False
     )
 
@@ -81,7 +81,6 @@ for e in range(exps):
     evolver.evolve(
         generations=evo_g,
         bound_estimation=False,
-        m_prob=0.3,
         checkpoint=False
     )
 
@@ -99,7 +98,7 @@ for e in range(exps):
 ################################################
 ######## save results #########################
 ################################################
-with open(f"MNIST_{probl}_{pop}_{exps}.json", "w") as f:
+with open(f"{dataset}_{probl}_{pop}_{exps}.json", "w") as f:
     json.dump({"avg_convs": avg_convs, "convs_in_time": convs_in_time}, f)
 
 # with open(f"MNIST_{pop}_{exps}.json", "r") as f:
@@ -111,17 +110,19 @@ with open(f"MNIST_{probl}_{pop}_{exps}.json", "w") as f:
 ######## plot convergence #####################
 ################################################
 # group convergence across experiments by generation
-# avg_conv_per_gen = [sum(i)/len(i) for i in zip(*convs_in_time)]
+avg_conv_per_gen = [sum(i)/len(i) for i in zip(*convs_in_time)]
 
-# ax.plot(range(len(avg_conv_per_gen)), avg_conv_per_gen, color="tomato")
-# ax.set_xlabel("generations")
-# ax.set_ylabel("avg. distance from ideal solution")
-
-# plt.show()
+ax.plot(range(len(avg_conv_per_gen)), avg_conv_per_gen, color="tomato")
+ax.set_xlabel("generations")
+ax.set_ylabel("avg. distance from ideal solution")
 
 
-# # plot
-# go = input("wanna plot?")
-# if go:
-#     evolution.plot_evolution()
+plt.savefig(f"converge_{dataset}_{probl}_{pop}_{exps}_t.png", transparent=True)
+plt.savefig(f"converge_{dataset}_{probl}_{pop}_{exps}.png", transparent=False)
+
+
+plt.show()
+
+
+
 

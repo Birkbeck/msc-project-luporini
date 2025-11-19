@@ -42,7 +42,7 @@ def embed(model, biggest):
     
     # ⛔️: every time embed() called, torch.random introduces randomness
     lx_padding = torch.full((lx_pad_size,), mu, dtype=flat.dtype, device=device)
-    rx_padding = torch.normal((rx_pad_size,), mu, dtype=flat.dtype, device=device)
+    rx_padding = torch.full((rx_pad_size,), mu, dtype=flat.dtype, device=device)
 
     return (
         torch.cat([lx_padding, flat, rx_padding]), size, model
@@ -572,7 +572,8 @@ class NSGA2():
             ################################################
             if gen == 0:
                 self._initialise_islands()
-            print(f"gen {gen} | topologies: {len(self._islands)}")
+            if not bound_estimation:
+                print(f"gen {gen} | topologies: {len(self._islands)}")
             ################################################
             
             self._fitnesses_1 = group_fitness(self._population, fit_fn_1)
