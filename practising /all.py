@@ -141,7 +141,8 @@ def model_fitness(data: DataLoader, problem="AE"):
                 loss = loss_fn(pred, y)
                 tot_loss += loss.item()   # ⛔️SPIKING FITNESS if avg_loss very small
             avg_loss = tot_loss / len(data) # enumerate starts from 0
-            avg_fitness = 1 / (avg_loss + 1e-8) # if avg_loss–>0, avg_fit–>inf!!
+            # avg_fitness = 1 / (avg_loss + 1e-8) # if avg_loss–>0, avg_fit–>inf!!
+            avg_fitness = -avg_loss
         return avg_fitness
     
     return fitness
@@ -572,8 +573,8 @@ class NSGA2():
             ################################################
             if gen == 0:
                 self._initialise_islands()
-            if not bound_estimation:
-                print(f"gen {gen} | topologies: {len(self._islands)}")
+            # if not bound_estimation:
+            #     print(f"gen {gen} | topologies: {len(self._islands)} | {self.avg_convergence()}")
             ################################################
             
             self._fitnesses_1 = group_fitness(self._population, fit_fn_1)
@@ -669,6 +670,8 @@ class NSGA2():
 
                 #checkpoint only if NOT BOUND ESTIMATION
                 self._gen +=1
+
+                print(f"gen {gen} | topologies: {len(self._islands)} | {self.avg_convergence()}")
 
                 if checkpoint and checkpoint_path:
                     assert os.path.isdir(checkpoint_path)

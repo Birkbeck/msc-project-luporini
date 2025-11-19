@@ -36,12 +36,12 @@ cifar = (3, 32, 32)
 ######### set the experiments #################
 ################################################
 m = TinyConvClassifier
-pop = 10
+pop = 15
 dataset = "mnist"
 probl = "classification"
 exps = 1 # number of experiments
 bound_g = 2 # bound exploration gens
-evo_g = 10 # actual evolution gens
+evo_g = 6 # actual evolution gens
 inter = [2, 6]
 seed = 42
 avg_convs = []
@@ -96,7 +96,7 @@ for e in range(exps):
     ax.plot(range(len(conv)), conv, alpha=0.4, color="lightblue")
 
 ################################################
-######## save results #########################
+######## save convergences ####################
 ################################################
 with open(f"{dataset}_{probl}_{pop}_{exps}.json", "w") as f:
     json.dump({"avg_convs": avg_convs, "convs_in_time": convs_in_time}, f)
@@ -105,6 +105,10 @@ with open(f"{dataset}_{probl}_{pop}_{exps}.json", "w") as f:
 #     data = json.load(f)
 #     avg_convs = data["avg_convs"]
 #     convs_in_time = data["convs_in_time"]
+
+################################################
+##### save best models (per experiment?) #####
+################################################
 
 ################################################
 ######## plot convergence #####################
