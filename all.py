@@ -168,7 +168,8 @@ def model_runtime(data: DataLoader):
     """
     careful if using on GPU.. operations are asynchronous
     - torch.cuda.synchronise() ⁉️
-    - synch for every time.time() ⁉️ (https://discuss.pytorch.org/t/bizzare-extra-time-consumption-in-pytorch-gpu-1-1-0-1-2-0/87843)
+    - synch for every time.time() ⁉️
+    (https://discuss.pytorch.org/t/bizzare-extra-time-consumption-in-pytorch-gpu-1-1-0-1-2-0/87843)
 
     ALSO
 
@@ -401,6 +402,15 @@ class NSGA2():
                 self._best_model = deepcopy(best_model)
                 self._best_convergence = best_convergence
     
+    def _clear_attributes(self, bound1, bound2):
+        self._fitnesses_1 = None
+        self._fitnesses_2 = None
+        self._convergence = [] # list of lists: normalised distances per generation
+        self._best_model = None
+        self._best_convergence = None
+        self._emp_bounds_1 = bound1 # empirical bounds per objective
+        self._emp_bounds_2 = bound2
+    
     def _checkpoint(self, filepath):
         obj = {
             "population": [(m.state_dict(), m.get_stride()) for m in self._population],
@@ -486,13 +496,7 @@ class NSGA2():
                 ).to(mydevice)
             ) for i in range(pop_size)
         ]
-        self._fitnesses_1 = None
-        self._fitnesses_2 = None
-        self._convergence = [] # list of lists: normalised distances per generation
-        self._best_model = None
-        self._best_convergence = None
-        self._emp_bounds_1 = bound1 # empirical bounds per objective
-        self._emp_bounds_2 = bound2
+        self._clear_attributes(bound1, bound2)
         self._gen = 0
         self._max_gen = None
 
@@ -511,13 +515,7 @@ class NSGA2():
             pop.append(new)
         
         self._population = pop
-        self._fitnesses_1 = None
-        self._fitnesses_2 = None
-        self._convergence = [] # list of lists: normalised distances per generation
-        self._best_model = None
-        self._best_convergence = None
-        self._emp_bounds_1 = bound1 # empirical bounds per objective
-        self._emp_bounds_2 = bound2
+        self._clear_attributes(bound1, bound2)
 
     
     def evolve(
