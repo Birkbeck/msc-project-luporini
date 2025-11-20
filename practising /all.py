@@ -202,15 +202,18 @@ def normalise_fitness(fitnesses: list, bound):
     return normalised_fitnesses
 
 
-def group_fitness(pop:list, bound:tuple, fn:function)->list:
+def group_fitness(pop:list, bound:tuple, fn:function, bound_estimation:bool)->list:
     """
     given a model pop and a fitness function, return fitness for each model
     - fitnesses are clamped between the given bound (empirical bounds!!!)
     """
-    mino, maxo = bound
-    return [  # min(fit, maxo) + max(fit, mino) # use generator inside!!
-        max(min(fit, maxo), mino) for fit in (fn(i) for i in pop)
-    ]
+    if bound_estimation:
+       return [fn(i) for i in pop] 
+    else:
+        mino, maxo = bound
+        return [  # min(fit, maxo) + max(fit, mino) # use generator inside!!
+            max(min(fit, maxo), mino) for fit in (fn(i) for i in pop)
+        ]
 
 
 def non_dominated_sorting(whole, fits1, fits2):
@@ -576,8 +579,13 @@ class NSGA2():
             fit_fn_1 = self._fit_fn_1(loader_sample, self._problem)
             fit_fn_2 = self._fit_fn_2(loader_sample)
 
-            self._fitnesses_1 = group_fitness(self._population, fit_fn_1)
-            self._fitnesses_2 = group_fitness(self._population, fit_fn_2)
+            
+            self._fitnesses_1 = group_fitness(
+                self._population, self._emp_bounds_1, fit_fn_1, bound_estimation
+            )
+            self._fitnesses_2 = group_fitness(
+                self._population, self._emp_bounds_2, fit_fn_2, bound_estimation
+            )
 
             ################################################
             if gen == 0:
