@@ -44,10 +44,10 @@ bound_g = 2 # bound exploration gens
 evo_g = 6 # actual evolution gens
 inter = [2, 6]
 seed = 42
+
+fronts = []
 avg_convs = []
 convs_in_time = []
-
-_, ax = plt.subplots(figsize=(10, 10))
 for e in range(exps):
     print(f"\nBeginning experiment {e}")
     random.seed(seed)
@@ -84,22 +84,28 @@ for e in range(exps):
         checkpoint=False
     )
 
-
+    # extract exp. results 🔥
+    front = evolver.get_best_front() #⛔️
     conv = evolver.conv_in_time()
     conv_final = evolver.avg_convergence()
+
+    fronts.append(front)
     convs_in_time.append(conv)
     avg_convs.append(conv_final)
     print(f"Avg population convergence: {round(conv_final, 2)}")
     
     seed += 2
 
-    ax.plot(range(len(conv)), conv, alpha=0.4, color="lightblue")
 
 ################################################
 ######## save convergences ####################
 ################################################
 with open(f"{dataset}_{probl}_{pop}_{exps}.json", "w") as f:
-    json.dump({"avg_convs": avg_convs, "convs_in_time": convs_in_time}, f)
+    json.dump({
+        "fronts": fronts,
+        "avg_convs": avg_convs,
+        "convs_in_time": convs_in_time
+    }, f)
 
 # with open(f"MNIST_{pop}_{exps}.json", "r") as f:
 #     data = json.load(f)
@@ -114,6 +120,9 @@ with open(f"{dataset}_{probl}_{pop}_{exps}.json", "w") as f:
 ######## plot convergence #####################
 ################################################
 # group convergence across experiments by generation
+# MAKE INTO FUNCTION ‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️
+_, ax = plt.subplots(figsize=(10, 10))
+ax.plot(range(len(conv)), conv, alpha=0.4, color="lightblue")
 avg_conv_per_gen = [sum(i)/len(i) for i in zip(*convs_in_time)]
 
 ax.plot(range(len(avg_conv_per_gen)), avg_conv_per_gen, color="tomato")
