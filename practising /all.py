@@ -452,7 +452,8 @@ class NSGA2():
         self._emp_bounds_1 = bound1 # empirical bounds per objective
         self._emp_bounds_2 = bound2
     
-    def _checkpoint(self, filepath):
+    def _checkpoint(self, path):
+        """path: "name.pth" """
         obj = {
             "population": [(m.state_dict(), m.get_stride()) for m in self._population],
             "problem": self._problem,
@@ -466,7 +467,9 @@ class NSGA2():
             "gen": self._gen,
             "max_gen": self._max_gen
         }
-        # os.mkdirs("./checkpoints", exist_ok=True) # ⁉️
+        dirpath = "./checkpoints"
+        os.makedirs(dirpath, exist_ok=True)
+        filepath = os.path.join(dirpath, path)
         torch.save(obj, filepath)
     
     def _load_checkpoint(self, filepath, model):
@@ -573,16 +576,18 @@ class NSGA2():
             m_prob=0.3
     ):
 
-        if checkpoint:
+        if checkpoint and checkpoint_path:
             self._load_checkpoint(checkpoint_path, self._model)
         
         if self._max_gen is None:
             self._max_gen = generations
+
+        to_go = self._max_gen - self._gen
         
         ###########################################
         ############ EVOLUTION LOOP ###############
         ###########################################
-        for gen in range(self._gen, self._max_gen):
+        for gen in range(to_go):
 
             loader_sample = self._sample_loader(subset_fraction)
             fit_fn_1 = self._fit_fn_1(loader_sample, self._problem)

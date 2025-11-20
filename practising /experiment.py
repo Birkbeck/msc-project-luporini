@@ -15,24 +15,24 @@ class Experiment():
             pop,
             dataset,
             problem,
-            runs,
             bound_gens,
             evo_gens,
             interval,
             seed,
+            save_to,
             resume
     ):
         self._model = model
         self._pop = pop
         self._dataset = dataset.lower()
         self._problem = problem
-        self._runs = runs
         self._bound_gens = bound_gens
         self._evo_gens = evo_gens
         self._interval = interval
         self._seed = seed
         self._resume = resume
-        self._max_run = None
+        self._run = 0
+        self._max_runs = None
 
         self._fronts = []
         self._avg_convs = []
@@ -55,11 +55,26 @@ class Experiment():
         np.random.seed(self._seed)
         torch.manual_seed(self._seed)
     
-    def _checkpoint(self, filepath)
+    def _checkpoint(self, filepath):
+        with open(f"{dataset}_{probl}_{pop}_{exps}.json", "w") as f:
+            json.dump({
+                "fronts": self._fronts,
+                "avg_convs": self._avg_convs,
+                "convs_in_time": self._convs_in_time
+            }, f)
+    
+    def _load_checkpoint(self, filepath)
+        
 
-    def go(self, resume=False):
+    def go(self, runs, resume=False):
 
-        for e in range(self._runs):
+        if resume:
+            self._load_checkpoint()
+
+        if self._max_runs is None:
+            self._max_runs = runs
+
+        for e in range(self._run, self._max_runs):
             print(f"\nBeginning experiment {e}")
             self._set_seed()
             self._setup()
@@ -105,6 +120,10 @@ class Experiment():
             convs_in_time.append(conv)
             avg_convs.append(conv_final)
             print(f"Avg population convergence: {round(conv_final, 2)}")
+
+            self._checkpoint()
+
+            self._run +=1
             
             # update seed for next run
             seed += 2
