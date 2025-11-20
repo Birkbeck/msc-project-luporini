@@ -189,7 +189,7 @@ def model_runtime(data: DataLoader):
     return speed
 
 
-def normalise_fitness(fitnesses: list, bound):
+def normalise_objective(fitnesses: list, bound):
     """
     normalises fitnesses between 0 and 1
     normalised_f = (f - min)/(max - min) 
@@ -368,6 +368,7 @@ class NSGA2():
         self._best_convergence = None
         self._emp_bounds_1 = None # empirical bounds per objective
         self._emp_bounds_2 = None
+        self._best_front = None
 
         self._biggest = max(
             sum(param.numel() for param in m.parameters()) # ⛔️ will change mid run????
@@ -416,9 +417,14 @@ class NSGA2():
         return bounds
     
     def _estimate_convergence(self):
-        normalised_x = normalise_fitness(self._fitnesses_1, self._emp_bounds_1) # x fitness
-        normalised_y = normalise_fitness(self._fitnesses_2, self._emp_bounds_2) # y speed
-            
+        """
+        given the current population,
+        update the model closer to the ideal solution
+        and its distance from this ideal solution.
+        """
+        normalised_x = normalise_objective(self._fitnesses_2, self._emp_bounds_2) # x speed
+        normalised_y = normalise_objective(self._fitnesses_1, self._emp_bounds_1) # y fitness
+
         # getting distance from ideal for each model 
         distances = [] # and record in self._convergence as pop_avg per gen
         for i in range(self._pop_size):
@@ -501,6 +507,12 @@ class NSGA2():
         }
         torch.save(best, filepath)
     
+    def get_bounds(self):
+        return self._emp_bounds_1, self._emp_bounds_2
+    
+    def get_best_front(self):
+        return self._best_front
+    
     def conv_in_time(self):
         """returns list of avg.pop distance from ideal point per generation"""
         return [sum(i)/len(i) for i in self._convergence]
@@ -510,11 +522,8 @@ class NSGA2():
         avg_convergence = sum(self._convergence[-1])/self._pop_size
         return avg_convergence
     
-    def get_bounds(self):
-        return self._emp_bounds_1, self._emp_bounds_2
-    
     def plot_convergence(self):
-        """ what the fuck do I want to plot? WHO KNOWS"""
+        """"""
         distances = self.conv_in_time()
         
         _, ax = plt.subplots()
@@ -682,11 +691,26 @@ class NSGA2():
             else:
                 self._estimate_convergence()
 
+
+
                 #checkpoint only if NOT BOUND ESTIMATION
-                self._gen +=1
+            self._gen +=1
 
-                print(f"gen {gen} | topologies: {len(self._islands)} | {self.avg_convergence()}")
+            print(f"gen {gen} | topologies: {len(self._islands)} | {self.avg_convergence()}")
 
-                if checkpoint and checkpoint_path:
-                    assert os.path.isdir(checkpoint_path)
-                    self._checkpoint(checkpoint_path)
+            if checkpoint and checkpoint_path:
+                assert os.path.isdir(checkpoint_path)
+                self._checkpoint(checkpoint_path)
+            
+        # get the first front of the last generation
+        # in a normalised space 
+        first_front = fronts[0]
+        best_y = normalise_objective( # y fitness
+            [self._fitnesses_1[i] for i in first_front], self._emp_bounds_1
+        ) 
+        best_x = normalise_objective( # x speed
+            [self._fitnesses_2[i] for i in first_front], self._emp_bounds_2
+        )
+
+        self._best_front = list(zip(best_x, best_y))
+            
