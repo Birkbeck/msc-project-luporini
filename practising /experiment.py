@@ -35,6 +35,13 @@ class Experiment():
         self._fronts = []
         self._avg_convs = []
         self._convs_in_time = []
+    
+    def get_fronts(self):
+        return self._fronts
+    def get_avg_convs(self):
+        return self._avg_convs
+    def get_convs_in_time(self):
+        return self._convs_in_time
 
     def _setup(self):
         if self._dataset == "mnist":
