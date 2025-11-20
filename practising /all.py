@@ -452,52 +452,52 @@ class NSGA2():
         self._emp_bounds_1 = bound1 # empirical bounds per objective
         self._emp_bounds_2 = bound2
     
-    def _checkpoint(self, path):
-        """path: "name.pth" """
-        obj = {
-            "population": [(m.state_dict(), m.get_stride()) for m in self._population],
-            "problem": self._problem,
-            "pop_size": self._pop_size,
-            "convergence": self._convergence, 
-            "best_model": (self._best_model.state_dict(), self._best_model.get_stride()),
-            "best_convergence": self._best_convergence,
-            "emp_bounds_1": self._emp_bounds_1,
-            "emp_bounds_2": self._emp_bounds_2,
-            "biggest": self._biggest,
-            "gen": self._gen,
-            "max_gen": self._max_gen
-        }
-        dirpath = "./checkpoints"
-        os.makedirs(dirpath, exist_ok=True)
-        filepath = os.path.join(dirpath, path)
-        torch.save(obj, filepath)
+    # def _checkpoint(self, path):
+    #     """path: "name.pth" """
+    #     obj = {
+    #         "population": [(m.state_dict(), m.get_stride()) for m in self._population],
+    #         "problem": self._problem,
+    #         "pop_size": self._pop_size,
+    #         "convergence": self._convergence, 
+    #         "best_model": (self._best_model.state_dict(), self._best_model.get_stride()),
+    #         "best_convergence": self._best_convergence,
+    #         "emp_bounds_1": self._emp_bounds_1,
+    #         "emp_bounds_2": self._emp_bounds_2,
+    #         "biggest": self._biggest,
+    #         "gen": self._gen,
+    #         "max_gen": self._max_gen
+    #     }
+    #     dirpath = "./checkpoints"
+    #     os.makedirs(dirpath, exist_ok=True)
+    #     filepath = os.path.join(dirpath, path)
+    #     torch.save(obj, filepath)
     
-    def _load_checkpoint(self, filepath, model):
-        checkpoint = torch.load(filepath)
+    # def _load_checkpoint(self, filepath, model):
+    #     checkpoint = torch.load(filepath)
         
-        population = checkpoint["population"]
-        self._population = []
-        for state, s in population:
-            m = model(stride=s).to(mydevice)
-            m.load_state_dict(state)
-            self._population.append(m)
-        self._initialise_islands()
-        self._pop_size = checkpoint["pop_size"]
+    #     population = checkpoint["population"]
+    #     self._population = []
+    #     for state, s in population:
+    #         m = model(stride=s).to(mydevice)
+    #         m.load_state_dict(state)
+    #         self._population.append(m)
+    #     self._initialise_islands()
+    #     self._pop_size = checkpoint["pop_size"]
 
-        self._problem = checkpoint["problem"]
-        self._convergence = checkpoint["convergence"]
+    #     self._problem = checkpoint["problem"]
+    #     self._convergence = checkpoint["convergence"]
         
-        weights, s = checkpoint["best_model"]
-        best = model(stride=s).to(mydevice)
-        best.load_state_dict(weights)
-        self._best_model = best
-        self._best_convergence = checkpoint["best_convergence"]
+    #     weights, s = checkpoint["best_model"]
+    #     best = model(stride=s).to(mydevice)
+    #     best.load_state_dict(weights)
+    #     self._best_model = best
+    #     self._best_convergence = checkpoint["best_convergence"]
 
-        self._emp_bounds_1 = checkpoint["emp_bounds_1"]
-        self._emp_bounds_2 = checkpoint["emp_bounds_2"]
-        self._biggest = checkpoint["biggest"]
-        self._gen = checkpoint["gen"]
-        self._max_gen = checkpoint["max_gen"]
+    #     self._emp_bounds_1 = checkpoint["emp_bounds_1"]
+    #     self._emp_bounds_2 = checkpoint["emp_bounds_2"]
+    #     self._biggest = checkpoint["biggest"]
+    #     self._gen = checkpoint["gen"]
+    #     self._max_gen = checkpoint["max_gen"]
 
     def get_best(self):
         best = self._best_model, self._best_convergence
@@ -568,26 +568,26 @@ class NSGA2():
     
     def evolve(
             self,
+            # save=False,
+            # load=False,
             checkpoint_path=None,
-            checkpoint=True,
             bound_estimation=True,
             generations=0,
             subset_fraction=0.07,
             m_prob=0.3
     ):
 
-        if checkpoint and checkpoint_path:
-            self._load_checkpoint(checkpoint_path, self._model)
+        # if load and checkpoint_path:
+        #     self._load_checkpoint(checkpoint_path, self._model)
         
-        if self._max_gen is None:
-            self._max_gen = generations
+        # if self._max_gen is None:
+        #     self._max_gen = generations
 
-        to_go = self._max_gen - self._gen
+        # to_go = self._max_gen - self._gen
         
-        ###########################################
-        ############ EVOLUTION LOOP ###############
-        ###########################################
-        for gen in range(to_go):
+        # for gen in range(to_go):
+        
+        for gen in range(generations):
 
             loader_sample = self._sample_loader(subset_fraction)
             fit_fn_1 = self._fit_fn_1(loader_sample, self._problem)
@@ -703,9 +703,9 @@ class NSGA2():
 
             print(f"gen {gen} | topologies: {len(self._islands)} | {self.avg_convergence()}")
 
-            if checkpoint and checkpoint_path:
-                assert os.path.isdir(checkpoint_path)
-                self._checkpoint(checkpoint_path)
+            # if save and checkpoint_path:
+            #     assert os.path.isdir(checkpoint_path)
+            #     self._checkpoint(checkpoint_path)
             
         # get the first front of the last generation
         # in a normalised space 
