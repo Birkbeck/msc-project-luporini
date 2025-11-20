@@ -18,9 +18,7 @@ class Experiment():
             bound_gens,
             evo_gens,
             interval,
-            seed,
-            save_to,
-            resume
+            seed
     ):
         self._model = model
         self._pop = pop
@@ -30,7 +28,7 @@ class Experiment():
         self._evo_gens = evo_gens
         self._interval = interval
         self._seed = seed
-        self._resume = resume
+
         self._run = 0
         self._max_runs = None
 
@@ -56,25 +54,35 @@ class Experiment():
         torch.manual_seed(self._seed)
     
     def _checkpoint(self, filepath):
-        with open(f"{dataset}_{probl}_{pop}_{exps}.json", "w") as f:
+        with open(filepath, "w") as f:
             json.dump({
                 "fronts": self._fronts,
                 "avg_convs": self._avg_convs,
-                "convs_in_time": self._convs_in_time
+                "convs_in_time": self._convs_in_time,
+                "run": self._run,
+                "max_runs": self._max_runs
             }, f)
     
-    def _load_checkpoint(self, filepath)
-        
+    def _load_checkpoint(self, checkpoint):
+        """checkpoint = file.json"""
+        with open(checkpoint, "r") as f:
+            data = json.load(f)
 
-    def go(self, runs, resume=False):
+        self._fronts = data["fronts"]
+        self._avg_convs = data["avg_convs"]
+        self._convs_in_time = data["convs_in_time"]
+        self._run = data["run"]
+        self._max_runs = data["max_runs"]
 
-        if resume:
-            self._load_checkpoint()
-
-        if self._max_runs is None:
+    def run(self, runs, resume=False, filepath=None):
+        if resume and filepath:
+            self._load_checkpoint(filepath)
+        else:
             self._max_runs = runs
+        
+        to_go = self._max_runs - self._run
 
-        for e in range(self._run, self._max_runs):
+        for e in range(to_go):
             print(f"\nBeginning experiment {e}")
             self._set_seed()
             self._setup()
@@ -116,94 +124,13 @@ class Experiment():
             conv = evolver.conv_in_time()
             conv_final = evolver.avg_convergence()
 
-            fronts.append(front)
-            convs_in_time.append(conv)
-            avg_convs.append(conv_final)
+            self._fronts.append(front)
+            self._convs_in_time.append(conv)
+            self._avg_convs.append(conv_final)
             print(f"Avg population convergence: {round(conv_final, 2)}")
 
-            self._checkpoint()
+            self._checkpoint(filepath)
 
             self._run +=1
-            
             # update seed for next run
-            seed += 2
-
-
-        
-    
-
-
-################################################
-######### set the experiments #################
-################################################
-m = TinyConvClassifier
-pop = 15
-dataset = "mnist"
-probl = "classification"
-exps = 1 # number of experiments
-bound_g = 2 # bound exploration gens
-evo_g = 6 # actual evolution gens
-inter = [2, 6]
-seed = 42
-
-fronts = []
-avg_convs = []
-convs_in_time = []
-for e in range(exps):
-    print(f"\nBeginning experiment {e}")
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    
-    evolver = all.NSGA2(
-        pop_size=pop,
-        model=m,
-        input_shape=mnist,
-        interval=inter,
-        data=train_data,
-        problem=probl
-    )
-
-        # exploratory runs for empirical min/max
-    print("\n- estimating the bounds..")
-    evolver.evolve(
-        generations=bound_g,
-        bound_estimation=True,
-        checkpoint=False
-    )
-
-    b1, b2 = evolver.get_bounds()
-    evolver.reset(
-        m, pop, interval=inter, bound1=b1, bound2=b2
-    )
-
-    # actual evolution
-    print("- actual evolution..")
-    evolver.evolve(
-        generations=evo_g,
-        bound_estimation=False,
-        checkpoint=False
-    )
-
-    # extract exp. results 🔥
-    front = evolver.get_best_front() #⛔️
-    conv = evolver.conv_in_time()
-    conv_final = evolver.avg_convergence()
-
-    fronts.append(front)
-    convs_in_time.append(conv)
-    avg_convs.append(conv_final)
-    print(f"Avg population convergence: {round(conv_final, 2)}")
-    
-    seed += 2
-
-
-################################################
-######## save convergences ####################
-################################################
-with open(f"{dataset}_{probl}_{pop}_{exps}.json", "w") as f:
-    json.dump({
-        "fronts": fronts,
-        "avg_convs": avg_convs,
-        "convs_in_time": convs_in_time
-    }, f)
+            self._seed += 2
