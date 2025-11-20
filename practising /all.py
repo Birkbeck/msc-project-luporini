@@ -363,6 +363,8 @@ class NSGA2():
         self._fit_fn_2 = model_runtime#(data)
         self._fitnesses_1 = None
         self._fitnesses_2 = None # why was it missing⁉️⁉️⁉️⁉️⁉️⁉️⁉️
+        self._fitnesses_1_pool = []
+        self._fitnesses_2_pool = []
         self._convergence = [] # list of lists: normalised distances per generation
         self._best_model = None
         self._best_convergence = None
@@ -410,11 +412,11 @@ class NSGA2():
         )
         return loader
     
-    def _bounds_estimation(self, fitnesses, bound):
+    def _bounds_estimation(self, fitnesses):
         """update (or not) bounds"""
-        mino, maxo = min(fitnesses), max(fitnesses)
-        bounds = (min(mino, bound[0]), max(maxo, bound[1]))
-        return bounds
+        mino = np.percentile(fitnesses, 5)
+        maxo = np.percentile(fitnesses, 95)
+        return mino, maxo
     
     def _estimate_convergence(self):
         """
@@ -513,6 +515,10 @@ class NSGA2():
     def get_bounds(self):
         return self._emp_bounds_1, self._emp_bounds_2
     
+    def set_bounds(self, b1, b2):
+        self._emp_bounds_1 = b1
+        self._emp_bounds_2 = b2
+    
     def get_best_front(self):
         return self._best_front
     
@@ -547,6 +553,8 @@ class NSGA2():
         self._clear_attributes(bound1, bound2)
         self._gen = 0
         self._max_gen = None
+    
+
 
     def transfer(self, model, bound1, bound2, freeze=False):
         """should I just swap the new pop in??"""
@@ -570,7 +578,7 @@ class NSGA2():
             self,
             # save=False,
             # load=False,
-            checkpoint_path=None,
+            # checkpoint_path=None,
             bound_estimation=True,
             generations=0,
             subset_fraction=0.07,
@@ -594,10 +602,10 @@ class NSGA2():
             fit_fn_2 = self._fit_fn_2(loader_sample)
 
             
-            self._fitnesses_1 = group_fitness(
+            self._fitnesses_1 = group_fitness( # clamped within emp_bounds
                 self._population, self._emp_bounds_1, fit_fn_1, bound_estimation
             )
-            self._fitnesses_2 = group_fitness(
+            self._fitnesses_2 = group_fitness( # clamped within emp_bounds
                 self._population, self._emp_bounds_2, fit_fn_2, bound_estimation
             )
 
@@ -681,18 +689,11 @@ class NSGA2():
             self._check_biggest()
 
             if bound_estimation:
-                if gen == 0:
-                    b1 = (min(self._fitnesses_1), max(self._fitnesses_1))
-                    b2 = (min(self._fitnesses_2), max(self._fitnesses_2))
-                    bounds1 = self._bounds_estimation(self._fitnesses_1, b1)
-                    bounds2 = self._bounds_estimation(self._fitnesses_2, b2)
-                    self._emp_bounds_1 = bounds1
-                    self._emp_bounds_2 = bounds2
-                else:
-                    bounds1 = self._bounds_estimation(self._fitnesses_1, self._emp_bounds_1)
-                    bounds2 = self._bounds_estimation(self._fitnesses_2, self._emp_bounds_2)
-                    self._emp_bounds_1 = bounds1
-                    self._emp_bounds_2 = bounds2
+                self._fitnesses_1_pool.extend(self._fitnesses_1)
+                self._fitnesses_2_pool.extend(self._fitnesses_2)
+                if gen == generations-1:
+                    self._emp_bounds_1 = self._bounds_estimation(self._fitnesses_1_pool)
+                    self._emp_bounds_2 = self._bounds_estimation(self._fitnesses_2_pool)
             else:
                 self._estimate_convergence()
 

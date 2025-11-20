@@ -18,7 +18,8 @@ class Experiment():
             bound_gens,
             evo_gens,
             interval,
-            seed
+            seed,
+            resume
     ):
         self._model = model
         self._pop = pop
@@ -28,6 +29,10 @@ class Experiment():
         self._evo_gens = evo_gens
         self._interval = interval
         self._seed = seed
+        self._resume = resume
+        self._bound_estimation = False if self._resume else True
+        self._bounds1 = None
+        self._bounds2 = None
 
         self._run = 0
         self._max_runs = None
@@ -81,14 +86,40 @@ class Experiment():
         self._run = data["run"]
         self._max_runs = data["max_runs"]
 
-    def run(self, runs, resume=False, filepath=None):
-        if resume and filepath:
+    def run(self, runs, bound_estimation_runs=5, filepath=None):
+        if self._resume and filepath:
             self._load_checkpoint(filepath)
         else:
             self._max_runs = runs
         
-        to_go = self._max_runs - self._run
 
+        if self._bound_estimation:
+            print("\n- estimating the bounds..")
+            for e in range(bound_estimation_runs):
+                self._set_seed()
+                self._setup()
+
+                evolver = all.NSGA2(
+                    pop_size=self._pop,
+                    model=self._model,
+                    input_shape=self._input_shape,
+                    interval=self._interval,
+                    data=self._train,
+                    problem=self._problem
+                )
+
+                evolver.evolve(
+                    generations=self._bound_gens,
+                    bound_estimation=True
+                )
+
+                bounds1 = evolver.get_bounds()[0]
+                bounds2 = evolver.get_bounds()[1]
+                self._bounds1 = bounds1
+                self._bounds2 = bounds2
+        ################################
+        ################################
+        to_go = self._max_runs - self._run
         for e in range(to_go):
             print(f"\nBeginning experiment {e}")
             self._set_seed()
@@ -102,28 +133,14 @@ class Experiment():
                 data=self._train,
                 problem=self._problem
             )
-
-            print("\n- estimating the bounds..")
-            evolver.evolve(
-                generations=self._bound_gens,
-                bound_estimation=True,
-                checkpoint=False
-            )
-
-            b1, b2 = evolver.get_bounds()
-            evolver.reset(
-                self._model,
-                self._pop,
-                interval=self._interval,
-                bound1=b1, bound2=b2
-            )
+            
+            evolver.set_bounds(b1=bounds1, b2=bounds2)
 
             # actual evolution
             print("- actual evolution..")
             evolver.evolve(
                 generations=self._evo_gens,
-                bound_estimation=False,
-                checkpoint=False
+                bound_estimation=False
             )
 
             # extract results 
@@ -136,7 +153,9 @@ class Experiment():
             self._avg_convs.append(conv_final)
             print(f"Avg population convergence: {round(conv_final, 2)}")
 
+
             self._checkpoint(filepath)
+
 
             self._run +=1
             # update seed for next run
