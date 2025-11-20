@@ -202,17 +202,14 @@ def normalise_fitness(fitnesses: list, bound):
     return normalised_fitnesses
 
 
-def group_fitness(pop:list, fn, bound:tuple)->list:
+def group_fitness(pop:list, bound:tuple, fn:function)->list:
     """
     given a model pop and a fitness function, return fitness for each model
     - fitnesses are clamped between the given bound (empirical bounds!!!)
     """
     mino, maxo = bound
-    return [
-        mino if fn(i) < mino
-        else maxo if fn(i) > maxo
-        else fn(i)
-        for i in pop
+    return [  # min(fit, maxo) + max(fit, mino) # use generator inside!!
+        max(min(fit, maxo), mino) for fit in (fn(i) for i in pop)
     ]
 
 
