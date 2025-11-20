@@ -148,25 +148,6 @@ def model_fitness(data: DataLoader, problem="AE"):
     return fitness
 
 
-def group_fitness(pop:list, fn):
-    """
-    given a model pop and a fitness function, return list of fitnesses for each model
-    """
-    return [fn(i) for i in pop]
-
-
-def normalise_fitness(fitnesses: list, bound):
-    """
-    normalises fitnesses between 0 and 1
-    normalised_f = (f - min)/(max - min) 
-    """
-    mino, maxo = bound
-    normalised_fitnesses = [
-        (f - mino) / (maxo - mino + 1e-8)
-        for f in fitnesses
-    ]
-    return normalised_fitnesses
-
 def model_runtime(data: DataLoader):
     """
     careful if using on GPU.. operations are asynchronous
@@ -206,6 +187,34 @@ def model_runtime(data: DataLoader):
         return 1/interval
     
     return speed
+
+
+def normalise_fitness(fitnesses: list, bound):
+    """
+    normalises fitnesses between 0 and 1
+    normalised_f = (f - min)/(max - min) 
+    """
+    mino, maxo = bound
+    normalised_fitnesses = [
+        (f - mino) / (maxo - mino + 1e-8)
+        for f in fitnesses
+    ]
+    return normalised_fitnesses
+
+
+def group_fitness(pop:list, fn, bound:tuple)->list:
+    """
+    given a model pop and a fitness function, return fitness for each model
+    - fitnesses are clamped between the given bound (empirical bounds!!!)
+    """
+    mino, maxo = bound
+    return [
+        mino if fn(i) < mino
+        else maxo if fn(i) > maxo
+        else fn(i)
+        for i in pop
+    ]
+
 
 def non_dominated_sorting(whole, fits1, fits2):
     """
@@ -570,16 +579,16 @@ class NSGA2():
             fit_fn_1 = self._fit_fn_1(loader_sample, self._problem)
             fit_fn_2 = self._fit_fn_2(loader_sample)
 
+            self._fitnesses_1 = group_fitness(self._population, fit_fn_1)
+            self._fitnesses_2 = group_fitness(self._population, fit_fn_2)
+
             ################################################
             if gen == 0:
                 self._initialise_islands()
             # if not bound_estimation:
             #     print(f"gen {gen} | topologies: {len(self._islands)} | {self.avg_convergence()}")
             ################################################
-            
-            self._fitnesses_1 = group_fitness(self._population, fit_fn_1)
-            self._fitnesses_2 = group_fitness(self._population, fit_fn_2)
-            
+
             # mating events, either within(more likely) or between(less likely)
             children = [] # TOURNAMENT 🔥
             self._check_biggest()

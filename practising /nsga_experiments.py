@@ -73,7 +73,7 @@ for e in range(exps):
 
     b1, b2 = evolver.get_bounds()
     evolver.reset(
-        m, 10, interval=inter, bound1=b1, bound2=b2
+        m, pop, interval=inter, bound1=b1, bound2=b2
     )
 
     # actual evolution
