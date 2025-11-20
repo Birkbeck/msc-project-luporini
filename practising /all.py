@@ -375,8 +375,8 @@ class NSGA2():
             for m in self._population
         )
 
-        self._gen = 0
-        self._max_gen = None
+        # self._gen = 0
+        # self._max_gen = None
     
     def _initialise_islands(self):
         self._islands = defaultdict(list)
@@ -698,8 +698,8 @@ class NSGA2():
 
 
 
-                #checkpoint only if NOT BOUND ESTIMATION
-            self._gen +=1
+            #checkpoint only if NOT BOUND ESTIMATION
+            # self._gen +=1
 
             print(f"gen {gen} | topologies: {len(self._islands)} | {self.avg_convergence()}")
 
