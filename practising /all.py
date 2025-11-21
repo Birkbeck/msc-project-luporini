@@ -669,23 +669,23 @@ class NSGA2():
             )
             
             
-            solutions = []
+            survivors_idx = []
             for front in fronts:
-                if len(solutions) + len(front) < self._pop_size:
-                    solutions.extend(front)
-                elif len(solutions) + len(front) == self._pop_size:
-                    solutions.extend(front)
+                if len(survivors_idx) + len(front) < self._pop_size:
+                    survivors_idx.extend(front)
+                elif len(survivors_idx) + len(front) == self._pop_size:
+                    survivors_idx.extend(front)
                     break
                 else:
                     distance = crowding_distance(front, all_fitnesses_1, all_fitnesses_2)
                     descending_distance = sorted(front, key=lambda idx: distance[idx], reverse=True)
-                    free = self._pop_size - len(solutions)
-                    solutions.extend(descending_distance[:free])
+                    free = self._pop_size - len(survivors_idx)
+                    survivors_idx.extend(descending_distance[:free])
                     break
 
-            self._population = [all_solutions[s] for s in solutions]
-            self._fitnesses_1 = [all_fitnesses_1[s] for s in solutions]
-            self._fitnesses_2 = [all_fitnesses_2[s] for s in solutions]
+            self._population = [all_solutions[s] for s in survivors_idx]
+            self._fitnesses_1 = [all_fitnesses_1[s] for s in survivors_idx]
+            self._fitnesses_2 = [all_fitnesses_2[s] for s in survivors_idx]
 
             self._initialise_islands()
 
@@ -700,10 +700,10 @@ class NSGA2():
             else:
                 self._estimate_convergence()
 
-                print(f"gen:{gen}| #topo:{len(self._islands)}|{self.avg_convergence()}")
+                print(f"gen:{gen} | #topo:{len(self._islands)} | {round(self.avg_convergence(), 5)}")
 
 
-            self._gen +=1
+            # self._gen +=1 # ⛔️don't need it.. not checkpointing within run!!!!
             #checkpoint only if NOT BOUND ESTIMATION
             
 
@@ -712,14 +712,14 @@ class NSGA2():
             #     self._checkpoint(checkpoint_path)
             
         # get the first front of the last generation
-        # in a normalised space 
-        first_front = fronts[0]
-        best_y = normalise_objective( # y fitness
-            [self._fitnesses_1[i] for i in first_front], self._emp_bounds_1
-        ) 
-        best_x = normalise_objective( # x speed
-            [self._fitnesses_2[i] for i in first_front], self._emp_bounds_2
-        )
+        # in a normalised space
+        # ⛔️ ASSUMPTION: updating self._population, self._fitnesses_1/2
+        # during selection is done adding fronts in order!!!
+        f1_length = len(fronts[0])
+        f1_fitnesses_1 = self._fitnesses_1[:f1_length]
+        f1_fitnesses_2 = self._fitnesses_2[:f1_length]
+        best_y = normalise_objective(f1_fitnesses_1, self._emp_bounds_1) 
+        best_x = normalise_objective(f1_fitnesses_2, self._emp_bounds_2)
 
         self._best_front = list(zip(best_x, best_y))
             

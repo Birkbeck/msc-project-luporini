@@ -148,10 +148,11 @@ class Experiment():
                     bound_estimation=True
                 )
 
-                bounds1 = evolver.get_bounds()[0]
-                bounds2 = evolver.get_bounds()[1]
-                self._bounds1 = bounds1
-                self._bounds2 = bounds2
+            bounds1 = evolver.get_bounds()[0]
+            bounds2 = evolver.get_bounds()[1]
+            self._bounds1 = bounds1
+            self._bounds2 = bounds2
+            print("- Empirical bounds have been estimated..")
         ################################
         ################################
         to_go = self._max_runs - self._run
@@ -178,8 +179,8 @@ class Experiment():
                 bound_estimation=False
             )
 
-            # update best if current is better than stored
-            besto = evolver.get_best(self._filepath)
+            # update best if current is 'better' than stored
+            besto = evolver.get_best(self._best_filepath)
             if self._best is None or besto[1] < self._best[1]:
                 self._best = besto
 
@@ -201,6 +202,7 @@ class Experiment():
             self._run +=1
             # update seed for next run
             self._seed += 2
+            print(f"{e} run finished")
         
         if self._best_filepath is not None:
             self._save_best(f"./best_{self._dataset}_{self._problem}.pth")
