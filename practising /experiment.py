@@ -1,6 +1,7 @@
 import random
 import json
 import os
+from pathlib import Path
 import numpy as np
 import torch
 import all
@@ -22,19 +23,27 @@ class Experiment():
             seed,
             best_path,
             check_path,
-            resume=False
+            resume=False,
+            prestep=False,
+            prestep_gens=0
     ):
         self._model = model
         self._pop = pop
         self._dataset = dataset.lower()
+        self._interval = interval
         self._problem = problem
+        self._prestep = prestep
+
+        self._prestep_gens = prestep_gens
         self._evo_gens = evo_gens
         self._bound_gens = bound_gens
-        self._interval = interval
+
         self._seed = seed
         self._resume = resume
         self._best_filepath = best_path
         self._check_filepath = check_path
+
+        
 
         self._bound_estimation = False if self._resume else True
         self._bounds1 = None
@@ -54,6 +63,8 @@ class Experiment():
         return self._avg_convs
     def get_convs_in_time(self):
         return self._convs_in_time
+    def get_empirical_bounds(self):
+        return self._bounds1, self._bounds2
 
     def _setup(self):
         if self._dataset == "mnist":
@@ -118,18 +129,49 @@ class Experiment():
         else:
             self._best = None
 
+
+    ###########################################
+    ### actual experiment workflow ##########
+    ###########################################
     def run(self, bound_estimation_runs, runs):
-        
+        ##############################################
+        ###### if resume, load checkpoint ########
+        ###############################################
         if self._resume and self._check_filepath is not None:
             self._load_checkpoint(self._check_filepath)
             if self._best_filepath is not None:
                 self._load_best(self._best_filepath)
         else:
             self._max_runs = runs
-        
+        ##############################################
+        #############################################
+        ###### if prestep, autoencoder !!! ########
+        #############################################
+        ##############################################
+        if self._prestep:
+            evolver = all.NSGA2(
+                pop_size=self._pop,
+                model=self._model,
+                input_shape=self._input_shape,
+                interval=self._interval,
+                data=self._train,
+                problem="AE"
+            )
 
+            evolver.evolve(
+                generations=self._bound_gens,
+                bound_estimation=False,
+                prestep=True
+            )
+
+            autopop = evolver.get_transfer_pop()
+        ##############################################
+        #############################################
+        ###### the actual classifier/YOLO exp ########
+        #############################################
+        ##############################################
         if self._bound_estimation:
-            print("\n- estimating the bounds..")
+            print("\n- estimating fitness bounds..")
             for e in range(bound_estimation_runs):
                 self._set_seed()
                 self._setup()
@@ -143,21 +185,31 @@ class Experiment():
                     problem=self._problem
                 )
 
+                if self._prestep:
+                    evolver.transfer_pop(autopop) # ⛔️
+
                 evolver.evolve(
                     generations=self._bound_gens,
-                    bound_estimation=True
+                    bound_estimation=True,
+                    prestep=False
                 )
 
             bounds1 = evolver.get_bounds()[0]
             bounds2 = evolver.get_bounds()[1]
             self._bounds1 = bounds1
             self._bounds2 = bounds2
-            print("- Empirical bounds have been estimated..")
+            print("- bounds have been estimated..")
         ################################
+        #### starting experimental runs
         ################################
-        to_go = self._max_runs - self._run
-        for e in range(to_go):
-            print(f"\nBeginning experiment {e}")
+        for e in range(self._run, self._max_runs):
+            suf = "st" if e==1 else "nd" if e==2 else "th" 
+
+            # adjusting checkpoint filename according to run
+            checkpath = self._check_filepath/f"checkpoint_{e}.json"
+
+            # setting seed and preparing data
+            print(f"\n- beginning {e}{suf} run")
             self._set_seed()
             self._setup()
 
@@ -170,21 +222,31 @@ class Experiment():
                 problem=self._problem
             )
             
+            if self._prestep:
+                evolver.transfer_pop(autopop)
+
             evolver.set_bounds(b1=self._bounds1, b2=self._bounds2)
 
-            # actual evolution
-            print("- actual evolution..")
+            # actual evolution !!!
+            print("- starting actual evolution..")
             evolver.evolve(
                 generations=self._evo_gens,
-                bound_estimation=False
+                bound_estimation=False,
+                prestep=False
             )
 
+            print(f"- {e}{suf} run finished")
+
+            ################################################
             # update best if current is 'better' than stored
-            besto = evolver.get_best(self._best_filepath)
+            ################################################
+            besto = evolver.get_best()
             if self._best is None or besto[1] < self._best[1]:
                 self._best = besto
 
-            # extract results 
+            ####################
+            # extract results
+            ###################
             front = evolver.get_best_front()
             conv = evolver.conv_in_time()
             conv_final = evolver.avg_convergence()
@@ -192,17 +254,17 @@ class Experiment():
             self._fronts.append(front)
             self._convs_in_time.append(conv)
             self._avg_convs.append(conv_final)
-            print(f"Avg population convergence: {round(conv_final, 2)}")
+            print(f"- last population convergence: {round(conv_final, 2)}")
 
             if self._check_filepath is not None:
-                self._checkpoint(self._check_filepath) #⛔️
-                print(f"hit checkpoint!")
+                self._checkpoint(checkpath) #⛔️
+                print(f"- hit checkpoint!")
 
 
             self._run +=1
             # update seed for next run
             self._seed += 2
-            print(f"{e} run finished")
-        
+
+        bestpath = self._best_filepath/f"best_{self._dataset}_{}"
         if self._best_filepath is not None:
-            self._save_best(f"./best_{self._dataset}_{self._problem}.pth")
+            self._save_best(self._best_filepath)

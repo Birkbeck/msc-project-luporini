@@ -320,7 +320,6 @@ def convergence(*fits):
 
 
 
-
 class NSGA2():
     """
     ⛔️ bug in evolve.TOURNAMENT ~ CONVERGENCE ⛔️
@@ -453,53 +452,6 @@ class NSGA2():
         self._best_convergence = None
         self._emp_bounds_1 = bound1 # empirical bounds per objective
         self._emp_bounds_2 = bound2
-    
-    # def _checkpoint(self, path):
-    #     """path: "name.pth" """
-    #     obj = {
-    #         "population": [(m.state_dict(), m.get_stride()) for m in self._population],
-    #         "problem": self._problem,
-    #         "pop_size": self._pop_size,
-    #         "convergence": self._convergence, 
-    #         "best_model": (self._best_model.state_dict(), self._best_model.get_stride()),
-    #         "best_convergence": self._best_convergence,
-    #         "emp_bounds_1": self._emp_bounds_1,
-    #         "emp_bounds_2": self._emp_bounds_2,
-    #         "biggest": self._biggest,
-    #         "gen": self._gen,
-    #         "max_gen": self._max_gen
-    #     }
-    #     dirpath = "./checkpoints"
-    #     os.makedirs(dirpath, exist_ok=True)
-    #     filepath = os.path.join(dirpath, path)
-    #     torch.save(obj, filepath)
-    
-    # def _load_checkpoint(self, filepath, model):
-    #     checkpoint = torch.load(filepath)
-        
-    #     population = checkpoint["population"]
-    #     self._population = []
-    #     for state, s in population:
-    #         m = model(stride=s).to(mydevice)
-    #         m.load_state_dict(state)
-    #         self._population.append(m)
-    #     self._initialise_islands()
-    #     self._pop_size = checkpoint["pop_size"]
-
-    #     self._problem = checkpoint["problem"]
-    #     self._convergence = checkpoint["convergence"]
-        
-    #     weights, s = checkpoint["best_model"]
-    #     best = model(stride=s).to(mydevice)
-    #     best.load_state_dict(weights)
-    #     self._best_model = best
-    #     self._best_convergence = checkpoint["best_convergence"]
-
-    #     self._emp_bounds_1 = checkpoint["emp_bounds_1"]
-    #     self._emp_bounds_2 = checkpoint["emp_bounds_2"]
-    #     self._biggest = checkpoint["biggest"]
-    #     self._gen = checkpoint["gen"]
-    #     self._max_gen = checkpoint["max_gen"]
 
     def get_best(self):
         best = self._best_model, self._best_convergence
@@ -541,22 +493,38 @@ class NSGA2():
         ax.set_ylabel("avg. distance from ideal solution")
         plt.show()
     
-    def reset(self, model, pop_size, interval, bound1, bound2):
-        self._population = [
-            deepcopy(
-                model(
-                    input_shape=self._input_shape,
-                    stride=random.randint(interval[0], interval[1])
-                ).to(mydevice)
-            ) for i in range(pop_size)
-        ]
-        self._clear_attributes(bound1, bound2)
-        self._gen = 0
-        self._max_gen = None
+    # def reset(self, model, pop_size, interval, bound1, bound2):
+    #     self._population = [
+    #         deepcopy(
+    #             model(
+    #                 input_shape=self._input_shape,
+    #                 stride=random.randint(interval[0], interval[1])
+    #             ).to(mydevice)
+    #         ) for i in range(pop_size)
+    #     ]
+    #     self._clear_attributes(bound1, bound2)
+    #     self._gen = 0
+    #     self._max_gen = None
     
 
+    # def transfer(self, model, bound1, bound2, freeze=False):
+    #     """should I just swap the new pop in??"""
+    #     pop = []
+    #     for m in self._population:
+    #         weights = m.encoder.state_dict()
+    #         new = model(m, stride=m.get_stride()).to(mydevice)
+    #         new.encoder.load_state_dict(weights)
 
-    def transfer(self, model, bound1, bound2, freeze=False):
+    #         if freeze:
+    #             for param in new.parameters():
+    #                 param.requires_grad = False
+
+    #         pop.append(new)
+        
+    #     self._population = pop
+    #     self._clear_attributes(bound1, bound2)
+
+    def get_transfer_pop(self, model, freeze=False):
         """should I just swap the new pop in??"""
         pop = []
         for m in self._population:
@@ -570,30 +538,19 @@ class NSGA2():
 
             pop.append(new)
         
-        self._population = pop
-        self._clear_attributes(bound1, bound2)
+        return pop
 
-    
+    def transfer_pop(self, pop):
+        self._population = pop
+
     def evolve(
             self,
-            # save=False,
-            # load=False,
-            # checkpoint_path=None,
+            prestep=False,
             bound_estimation=True,
             generations=0,
             subset_fraction=0.07,
             m_prob=0.3
     ):
-
-        # if load and checkpoint_path:
-        #     self._load_checkpoint(checkpoint_path, self._model)
-        
-        # if self._max_gen is None:
-        #     self._max_gen = generations
-
-        # to_go = self._max_gen - self._gen
-        
-        # for gen in range(to_go):
         
         for gen in range(generations):
 
@@ -612,8 +569,6 @@ class NSGA2():
             ################################################
             if gen == 0:
                 self._initialise_islands()
-            # if not bound_estimation:
-            #     print(f"gen {gen} | topologies: {len(self._islands)} | {self.avg_convergence()}")
             ################################################
 
             # mating events, either within(more likely) or between(less likely)
@@ -687,39 +642,458 @@ class NSGA2():
             self._fitnesses_1 = [all_fitnesses_1[s] for s in survivors_idx]
             self._fitnesses_2 = [all_fitnesses_2[s] for s in survivors_idx]
 
-            self._initialise_islands()
 
+            ##################################
+            ###### here ends selection !!!!!!
+            ##################################
+            self._initialise_islands()
             self._check_biggest()
 
-            if bound_estimation:
-                self._fitnesses_1_pool.extend(self._fitnesses_1)
-                self._fitnesses_2_pool.extend(self._fitnesses_2)
-                if gen == generations-1:
-                    self._emp_bounds_1 = self._bounds_estimation(self._fitnesses_1_pool)
-                    self._emp_bounds_2 = self._bounds_estimation(self._fitnesses_2_pool)
-            else:
-                self._estimate_convergence()
+            #############################################
+            ####### IF NOT PRESTEP: bounds/ convergence 
+            #############################################
+            if not prestep:
+                if bound_estimation:
+                    self._fitnesses_1_pool.extend(self._fitnesses_1)
+                    self._fitnesses_2_pool.extend(self._fitnesses_2)
+                    if gen == generations-1:
+                        self._emp_bounds_1 = self._bounds_estimation(self._fitnesses_1_pool)
+                        self._emp_bounds_2 = self._bounds_estimation(self._fitnesses_2_pool)
+                else:
+                    self._estimate_convergence()
 
-                print(f"gen:{gen} | #topo:{len(self._islands)} | {round(self.avg_convergence(), 5)}")
+                    print(f"gen:{gen} | #topo:{len(self._islands)} | {round(self.avg_convergence(), 5)}")
 
-
-            # self._gen +=1 # ⛔️don't need it.. not checkpointing within run!!!!
-            #checkpoint only if NOT BOUND ESTIMATION
-            
-
-            # if save and checkpoint_path:
-            #     assert os.path.isdir(checkpoint_path)
-            #     self._checkpoint(checkpoint_path)
-            
+        #########################################
+        ####### IF NOT PRESTEP: ################
+        #########################################
         # get the first front of the last generation
-        # in a normalised space
+        # ⛔️ in a normalised space !!!
         # ⛔️ ASSUMPTION: updating self._population, self._fitnesses_1/2
         # during selection is done adding fronts in order!!!
-        f1_length = len(fronts[0])
-        f1_fitnesses_1 = self._fitnesses_1[:f1_length]
-        f1_fitnesses_2 = self._fitnesses_2[:f1_length]
-        best_y = normalise_objective(f1_fitnesses_1, self._emp_bounds_1) 
-        best_x = normalise_objective(f1_fitnesses_2, self._emp_bounds_2)
+        if not prestep:
+            f1_length = len(fronts[0])
+            f1_fitnesses_1 = self._fitnesses_1[:f1_length]
+            f1_fitnesses_2 = self._fitnesses_2[:f1_length]
+            best_y = normalise_objective(f1_fitnesses_1, self._emp_bounds_1) 
+            best_x = normalise_objective(f1_fitnesses_2, self._emp_bounds_2)
 
-        self._best_front = list(zip(best_x, best_y))
+            self._best_front = list(zip(best_x, best_y))
+            
+
+
+
+# -----––--- version with checkpoints -----––----
+
+# class NSGA2():
+#     """
+#     ⛔️ bug in evolve.TOURNAMENT ~ CONVERGENCE ⛔️
+#         - if evolution converges towards one archi only,
+#           only one key available
+    
+#     multi-objective evolution based on Islands + original nsga-ii
+#     obj_1 = classic net optimisation (MSELoss/CrossEntropy)
+#     obj_2 = inference speed
+
+#     remember:
+#         - initialise islands????????
+#         - need the right 'problem' when initialising the Island class!!!
+#     """
+#     def __init__(
+#             self,
+#             pop_size,
+#             model,
+#             data,
+#             input_shape=(1, 28, 28),
+#             interval=[1, 4], # small interval compared to pop_size? ⛔️ representativeness
+#             problem = "AE"
+#     ):
+#         self._islands = None
+#         self._data = data
+#         self._input_shape = input_shape
+#         self._model = model # needs to be a class, not an istance!
+#         self._problem = problem
+#         self._pop_size = pop_size
+#         self._population = [
+#             deepcopy(
+#                 model(
+#                     input_shape=input_shape,
+#                     stride=random.randint(interval[0], interval[1])
+#                 ).to(mydevice)
+#             ) for i in range(pop_size)
+#         ]
+
+#         self._fit_fn_1 = model_fitness#(data, problem=problem) #model_fitness is HIGHER ORDER
+#         self._fit_fn_2 = model_runtime#(data)
+#         self._fitnesses_1 = None
+#         self._fitnesses_2 = None # why was it missing⁉️⁉️⁉️⁉️⁉️⁉️⁉️
+#         self._fitnesses_1_pool = []
+#         self._fitnesses_2_pool = []
+#         self._convergence = [] # list of lists: normalised distances per generation
+#         self._best_model = None
+#         self._best_convergence = None
+#         self._emp_bounds_1 = None # empirical bounds per objective
+#         self._emp_bounds_2 = None
+#         self._best_front = None
+
+#         self._biggest = max(
+#             sum(param.numel() for param in m.parameters()) # ⛔️ will change mid run????
+#             for m in self._population
+#         )
+
+#         # self._gen = 0
+#         # self._max_gen = None
+    
+#     def _initialise_islands(self):
+#         self._islands = defaultdict(list)
+#         for m in self._population:
+#             key = m.get_stride()
+#             self._islands[key].append(m)
+    
+#     def _check_biggest(self):
+#         current_biggest = max(
+#             sum(param.numel() for param in m.parameters()) 
+#                 for m in self._population
+#         )
+#         if current_biggest != self._biggest:
+#             self._biggest = current_biggest
+    
+#     def _initialise_fitness(self):
+#         self._fitness = group_fitness(self._population, self._fit_fn)
+    
+#     def _sample_loader(self, fraction):
+#         full_idxs = list(range(len(self._data)))
+#         if isinstance(self._data.targets, torch.Tensor):
+#             labels = self._data.targets.numpy()
+#         elif isinstance(self._data.targets, list):
+#             labels = np.array(self._data.targets)
+            
+#         random_indices, _ = train_test_split(full_idxs, train_size=fraction, stratify=labels)
+#         subset = Subset(self._data, indices=random_indices)
+
+#         loader = DataLoader(
+#             subset, batch_size=30, shuffle=True, pin_memory=True
+#         )
+#         return loader
+    
+#     def _bounds_estimation(self, fitnesses):
+#         """update (or not) bounds"""
+#         mino = np.percentile(fitnesses, 5)
+#         maxo = np.percentile(fitnesses, 95)
+#         return mino, maxo
+    
+#     def _estimate_convergence(self):
+#         """
+#         given the current population,
+#         update the model closer to the ideal solution
+#         and its distance from this ideal solution.
+#         """
+#         normalised_x = normalise_objective(self._fitnesses_2, self._emp_bounds_2) # x speed
+#         normalised_y = normalise_objective(self._fitnesses_1, self._emp_bounds_1) # y fitness
+
+#         # getting distance from ideal for each model 
+#         distances = [] # and record in self._convergence as pop_avg per gen
+#         for i in range(self._pop_size):
+#             distances.append(convergence(normalised_x[i], normalised_y[i]))
+#         self._convergence.append(distances)
+
+#         # finding most balanced model (closest to ideal)
+#         zipped = list(zip(self._population, distances))
+#         ordered = sorted(zipped, key= lambda x: x[1])
+#         best_model, best_convergence = ordered[0]
+#         if self._best_model is None or self._best_convergence is None:
+#             self._best_model = deepcopy(best_model)
+#             self._best_convergence = best_convergence
+#         else:
+#             if best_convergence < self._best_convergence:
+#                 self._best_model = deepcopy(best_model)
+#                 self._best_convergence = best_convergence
+    
+#     def _clear_attributes(self, bound1, bound2):
+#         self._fitnesses_1 = None
+#         self._fitnesses_2 = None
+#         self._convergence = [] # list of lists: normalised distances per generation
+#         self._best_model = None
+#         self._best_convergence = None
+#         self._emp_bounds_1 = bound1 # empirical bounds per objective
+#         self._emp_bounds_2 = bound2
+    
+#     # def _checkpoint(self, path):
+#     #     """path: "name.pth" """
+#     #     obj = {
+#     #         "population": [(m.state_dict(), m.get_stride()) for m in self._population],
+#     #         "problem": self._problem,
+#     #         "pop_size": self._pop_size,
+#     #         "convergence": self._convergence, 
+#     #         "best_model": (self._best_model.state_dict(), self._best_model.get_stride()),
+#     #         "best_convergence": self._best_convergence,
+#     #         "emp_bounds_1": self._emp_bounds_1,
+#     #         "emp_bounds_2": self._emp_bounds_2,
+#     #         "biggest": self._biggest,
+#     #         "gen": self._gen,
+#     #         "max_gen": self._max_gen
+#     #     }
+#     #     dirpath = "./checkpoints"
+#     #     os.makedirs(dirpath, exist_ok=True)
+#     #     filepath = os.path.join(dirpath, path)
+#     #     torch.save(obj, filepath)
+    
+#     # def _load_checkpoint(self, filepath, model):
+#     #     checkpoint = torch.load(filepath)
+        
+#     #     population = checkpoint["population"]
+#     #     self._population = []
+#     #     for state, s in population:
+#     #         m = model(stride=s).to(mydevice)
+#     #         m.load_state_dict(state)
+#     #         self._population.append(m)
+#     #     self._initialise_islands()
+#     #     self._pop_size = checkpoint["pop_size"]
+
+#     #     self._problem = checkpoint["problem"]
+#     #     self._convergence = checkpoint["convergence"]
+        
+#     #     weights, s = checkpoint["best_model"]
+#     #     best = model(stride=s).to(mydevice)
+#     #     best.load_state_dict(weights)
+#     #     self._best_model = best
+#     #     self._best_convergence = checkpoint["best_convergence"]
+
+#     #     self._emp_bounds_1 = checkpoint["emp_bounds_1"]
+#     #     self._emp_bounds_2 = checkpoint["emp_bounds_2"]
+#     #     self._biggest = checkpoint["biggest"]
+#     #     self._gen = checkpoint["gen"]
+#     #     self._max_gen = checkpoint["max_gen"]
+
+#     def get_best(self):
+#         best = self._best_model, self._best_convergence
+#         return best
+    
+#     def save_best(self, filepath):
+#         best = {
+#             "weights": self._best_model.state_dict(),
+#             "convergence": self._best_convergence
+#         }
+#         torch.save(best, filepath)
+    
+#     def get_bounds(self):
+#         return self._emp_bounds_1, self._emp_bounds_2
+    
+#     def set_bounds(self, b1, b2):
+#         self._emp_bounds_1 = b1
+#         self._emp_bounds_2 = b2
+    
+#     def get_best_front(self):
+#         return self._best_front
+    
+#     def conv_in_time(self):
+#         """returns list of avg.pop distance from ideal point per generation"""
+#         return [sum(i)/len(i) for i in self._convergence]
+    
+#     def avg_convergence(self):
+#         """get FINAL population convergence (mean convergence at last gen)"""
+#         avg_convergence = sum(self._convergence[-1])/self._pop_size
+#         return avg_convergence
+    
+#     def plot_convergence(self):
+#         """"""
+#         distances = self.conv_in_time()
+        
+#         _, ax = plt.subplots()
+#         ax.plot(range(len(distances)), distances)
+#         ax.set_xlabel("generation")
+#         ax.set_ylabel("avg. distance from ideal solution")
+#         plt.show()
+    
+#     def reset(self, model, pop_size, interval, bound1, bound2):
+#         self._population = [
+#             deepcopy(
+#                 model(
+#                     input_shape=self._input_shape,
+#                     stride=random.randint(interval[0], interval[1])
+#                 ).to(mydevice)
+#             ) for i in range(pop_size)
+#         ]
+#         self._clear_attributes(bound1, bound2)
+#         self._gen = 0
+#         self._max_gen = None
+    
+
+
+#     def transfer(self, model, bound1, bound2, freeze=False):
+#         """should I just swap the new pop in??"""
+#         pop = []
+#         for m in self._population:
+#             weights = m.encoder.state_dict()
+#             new = model(m, stride=m.get_stride()).to(mydevice)
+#             new.encoder.load_state_dict(weights)
+
+#             if freeze:
+#                 for param in new.parameters():
+#                     param.requires_grad = False
+
+#             pop.append(new)
+        
+#         self._population = pop
+#         self._clear_attributes(bound1, bound2)
+
+    
+#     def evolve(
+#             self,
+#             # save=False,
+#             # load=False,
+#             # checkpoint_path=None,
+#             prestep=False,
+#             bound_estimation=True,
+#             generations=0,
+#             subset_fraction=0.07,
+#             m_prob=0.3
+#     ):
+
+#         # if load and checkpoint_path:
+#         #     self._load_checkpoint(checkpoint_path, self._model)
+        
+#         # if self._max_gen is None:
+#         #     self._max_gen = generations
+
+#         # to_go = self._max_gen - self._gen
+        
+#         # for gen in range(to_go):
+        
+#         for gen in range(generations):
+
+#             loader_sample = self._sample_loader(subset_fraction)
+#             fit_fn_1 = self._fit_fn_1(loader_sample, self._problem)
+#             fit_fn_2 = self._fit_fn_2(loader_sample)
+
+            
+#             self._fitnesses_1 = group_fitness( # clamped within emp_bounds
+#                 self._population, fit_fn_1, bound_estimation, self._emp_bounds_1
+#             )
+#             self._fitnesses_2 = group_fitness( # clamped within emp_bounds
+#                 self._population, fit_fn_2, bound_estimation, self._emp_bounds_2
+#             )
+
+#             ################################################
+#             if gen == 0:
+#                 self._initialise_islands()
+#             # if not bound_estimation:
+#             #     print(f"gen {gen} | topologies: {len(self._islands)} | {self.avg_convergence()}")
+#             ################################################
+
+#             # mating events, either within(more likely) or between(less likely)
+#             children = [] # TOURNAMENT 🔥
+#             self._check_biggest()
+#             for _ in range(self._pop_size//2):
+#                 if random.random() < 0.1 and len(self._islands)>= 2: # unlikely cross-species crossover 🔥
+#                     random_keys = random.sample(list(self._islands.keys()), k=2)
+#                     key1, key2 = random_keys[0], random_keys[1]
+#                     pool1, pool2 = self._islands[key1], self._islands[key2]
+#                     parent1, parent2 = random.choice(pool1), random.choice(pool2)
+#                     parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
+#                 else: # regular intraspecies crossover 🔥
+#                     key = random.choice(list(self._islands.keys()))
+#                     pool = self._islands[key]
+#                     if len(pool) == 1:
+#                         parent1, parent2 = pool[0], deepcopy(pool[0])
+#                         parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
+#                     elif len(pool) == 2:
+#                         parent1, parent2 = pool[0], pool[1]
+#                         parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
+#                     else:
+#                         parents = random.sample(pool, k=2)
+#                         parent1, parent2 = parents[0], parents[1]
+#                         parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
+                
+#                 self._check_biggest()
+
+#                 child1, child2 = crossover(parent1, parent2)
+#                 child1 = (mutate(child1[0]), child1[1], child1[2]) # mutate 50% of genes
+#                 child2 = (mutate(child2[0]), child2[1], child2[2]) # mutate 50% of genes
+                
+#                 children.extend([child1, child2])
+
+#                                     # remodel(f,s,a,biggest)–>model!
+#             remodelled_children = [remodel(f, s, a, self._biggest) for f, s, a in children]
+#             children_fitnesses_1 = group_fitness(
+#                 remodelled_children, fit_fn_1, bound_estimation, self._emp_bounds_1
+#             )
+#             children_fitnesses_2 = group_fitness(
+#                 remodelled_children, fit_fn_2, bound_estimation, self._emp_bounds_2
+#             )
+#             all_solutions = self._population + remodelled_children
+#             all_fitnesses_1 = self._fitnesses_1 + children_fitnesses_1
+#             all_fitnesses_2 = self._fitnesses_2 + children_fitnesses_2
+            
+#             assert len(self._population) == self._pop_size
+#             assert len(self._fitnesses_1) == self._pop_size
+#             assert len(self._fitnesses_2) == self._pop_size
+
+#             fronts = non_dominated_sorting(
+#                 all_solutions, all_fitnesses_1, all_fitnesses_2
+#             )
+            
+            
+#             survivors_idx = []
+#             for front in fronts:
+#                 if len(survivors_idx) + len(front) < self._pop_size:
+#                     survivors_idx.extend(front)
+#                 elif len(survivors_idx) + len(front) == self._pop_size:
+#                     survivors_idx.extend(front)
+#                     break
+#                 else:
+#                     distance = crowding_distance(front, all_fitnesses_1, all_fitnesses_2)
+#                     descending_distance = sorted(front, key=lambda idx: distance[idx], reverse=True)
+#                     free = self._pop_size - len(survivors_idx)
+#                     survivors_idx.extend(descending_distance[:free])
+#                     break
+
+#             self._population = [all_solutions[s] for s in survivors_idx]
+#             self._fitnesses_1 = [all_fitnesses_1[s] for s in survivors_idx]
+#             self._fitnesses_2 = [all_fitnesses_2[s] for s in survivors_idx]
+
+#             self._initialise_islands()
+
+#             self._check_biggest()
+
+#             #########################################
+#             ####### IF NOT PRESTEP: ################
+#             #########################################
+#             if not prestep:
+#                 if bound_estimation:
+#                     self._fitnesses_1_pool.extend(self._fitnesses_1)
+#                     self._fitnesses_2_pool.extend(self._fitnesses_2)
+#                     if gen == generations-1:
+#                         self._emp_bounds_1 = self._bounds_estimation(self._fitnesses_1_pool)
+#                         self._emp_bounds_2 = self._bounds_estimation(self._fitnesses_2_pool)
+#                 else:
+#                     self._estimate_convergence()
+
+#                     print(f"gen:{gen} | #topo:{len(self._islands)} | {round(self.avg_convergence(), 5)}")
+
+
+#             # self._gen +=1 # ⛔️don't need it.. not checkpointing within run!!!!
+#             #checkpoint only if NOT BOUND ESTIMATION
+            
+
+#             # if save and checkpoint_path:
+#             #     assert os.path.isdir(checkpoint_path)
+#             #     self._checkpoint(checkpoint_path)
+        
+
+#         #########################################
+#         ####### IF NOT PRESTEP: ################
+#         #########################################
+#         # get the first front of the last generation
+#         # ⛔️ in a normalised space !!!
+#         # ⛔️ ASSUMPTION: updating self._population, self._fitnesses_1/2
+#         # during selection is done adding fronts in order!!!
+#         if not prestep:
+#             f1_length = len(fronts[0])
+#             f1_fitnesses_1 = self._fitnesses_1[:f1_length]
+#             f1_fitnesses_2 = self._fitnesses_2[:f1_length]
+#             best_y = normalise_objective(f1_fitnesses_1, self._emp_bounds_1) 
+#             best_x = normalise_objective(f1_fitnesses_2, self._emp_bounds_2)
+
+#             self._best_front = list(zip(best_x, best_y))
             
