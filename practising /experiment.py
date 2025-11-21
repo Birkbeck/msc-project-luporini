@@ -1,5 +1,6 @@
 import random
 import json
+import os
 import numpy as np
 import torch
 import all
@@ -15,21 +16,26 @@ class Experiment():
             pop,
             dataset,
             problem,
-            bound_gens,
             evo_gens,
+            bound_gens,
             interval,
             seed,
-            resume
+            resume=False,
+            best_path="best.pth",
+            checkpoint_path="checkpoint.json"
     ):
         self._model = model
         self._pop = pop
         self._dataset = dataset.lower()
         self._problem = problem
-        self._bound_gens = bound_gens
         self._evo_gens = evo_gens
+        self._bound_gens = bound_gens
         self._interval = interval
         self._seed = seed
         self._resume = resume
+        self._best_filepath = best_path
+        self._check_filepath = checkpoint_path
+
         self._bound_estimation = False if self._resume else True
         self._bounds1 = None
         self._bounds2 = None
@@ -37,6 +43,7 @@ class Experiment():
         self._run = 0
         self._max_runs = None
 
+        self._best = None
         self._fronts = []
         self._avg_convs = []
         self._convs_in_time = []
@@ -71,8 +78,10 @@ class Experiment():
                 "fronts": self._fronts,
                 "avg_convs": self._avg_convs,
                 "convs_in_time": self._convs_in_time,
+                "bounds1": self._bounds1,
+                "bounds2": self._bounds2,
                 "run": self._run,
-                "max_runs": self._max_runs
+                "max_runs": self._max_runs,
             }, f)
     
     def _load_checkpoint(self, checkpoint):
@@ -83,12 +92,38 @@ class Experiment():
         self._fronts = data["fronts"]
         self._avg_convs = data["avg_convs"]
         self._convs_in_time = data["convs_in_time"]
+        self._bounds1 = data["bounds1"]
+        self._bounds2 = data["bounds2"]
         self._run = data["run"]
         self._max_runs = data["max_runs"]
+    
+    def _save_best(self, path):
+        model, conv = self._best
+        stride = model.get_stride()
+        torch.save({
+            "weights": model.state_dict(),
+            "convergence": conv,
+            "stride": stride
+        }, path)
 
-    def run(self, runs, bound_estimation_runs=5, filepath=None):
-        if self._resume and filepath:
-            self._load_checkpoint(filepath)
+    def _load_best(self, path):
+        if os.path.exists(path):
+            data = torch.load(path)
+            s = data["stride"]
+            c = data["convergence"]
+            w = data["weights"]
+            new = self._model(stride=s)
+            new.load_state_dict(w)
+            self._best = (new, c)
+        else:
+            self._best = None
+
+    def run(self, runs, bound_estimation_runs=5):
+        
+        if self._resume and self._check_filepath is not None:
+            self._load_checkpoint(self._check_filepath)
+            if self._best_filepath is not None:
+                self._load_best(self._best_filepath)
         else:
             self._max_runs = runs
         
@@ -134,7 +169,7 @@ class Experiment():
                 problem=self._problem
             )
             
-            evolver.set_bounds(b1=bounds1, b2=bounds2)
+            evolver.set_bounds(b1=self._bounds1, b2=self._bounds2)
 
             # actual evolution
             print("- actual evolution..")
@@ -143,8 +178,13 @@ class Experiment():
                 bound_estimation=False
             )
 
+            # update best if current is better than stored
+            besto = evolver.get_best(self._filepath)
+            if self._best is None or besto[1] < self._best[1]:
+                self._best = besto
+
             # extract results 
-            front = evolver.get_best_front() #⛔️
+            front = evolver.get_best_front()
             conv = evolver.conv_in_time()
             conv_final = evolver.avg_convergence()
 
@@ -154,9 +194,13 @@ class Experiment():
             print(f"Avg population convergence: {round(conv_final, 2)}")
 
 
-            self._checkpoint(filepath)
+            self._checkpoint(self._check_filepath) #⛔️
+            print(f"hit checkpoint!")
 
 
             self._run +=1
             # update seed for next run
             self._seed += 2
+        
+        if self._best_filepath is not None:
+            self._save_best(f"./best_{self._dataset}_{self._problem}.pth")

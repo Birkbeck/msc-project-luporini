@@ -683,7 +683,6 @@ class NSGA2():
             self._fitnesses_1 = [all_fitnesses_1[s] for s in solutions]
             self._fitnesses_2 = [all_fitnesses_2[s] for s in solutions]
 
-
             self._initialise_islands()
 
             self._check_biggest()
@@ -702,7 +701,7 @@ class NSGA2():
             #checkpoint only if NOT BOUND ESTIMATION
             # self._gen +=1
 
-            print(f"gen {gen} | topologies: {len(self._islands)} | {self.avg_convergence()}")
+            print(f"gen:{gen}| bound_estimation:{bound_estimation}| #topo:{len(self._islands)}|{self.avg_convergence()}")
 
             # if save and checkpoint_path:
             #     assert os.path.isdir(checkpoint_path)
