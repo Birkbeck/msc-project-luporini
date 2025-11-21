@@ -83,7 +83,7 @@ def crossover(parent1: tuple, parent2: tuple)-> tuple[torch.Tensor, torch.Tensor
     return child1, child2
 
 
-def mutate(guy:torch.Tensor, m_chance=0.2, mode="small", m_rate=0.3) -> torch.Tensor:
+def mutate(guy:torch.Tensor, m_chance=0.2, m_rate=0.3, mode="small") -> torch.Tensor:
     """
     randomly mutate parameters in a 1D tensor
 
@@ -549,7 +549,8 @@ class NSGA2():
             bound_estimation=True,
             generations=0,
             subset_fraction=0.07,
-            m_prob=0.3
+            m_r=0.3,
+            m_c=0.2
     ):
         
         for gen in range(generations):
@@ -598,8 +599,8 @@ class NSGA2():
                 self._check_biggest()
 
                 child1, child2 = crossover(parent1, parent2)
-                child1 = (mutate(child1[0]), child1[1], child1[2]) # mutate 50% of genes
-                child2 = (mutate(child2[0]), child2[1], child2[2]) # mutate 50% of genes
+                child1 = (mutate(child1[0], m_rate=m_r, m_chance=m_c), child1[1], child1[2]) # mutate 50% of genes
+                child2 = (mutate(child2[0], m_rate=m_r, m_chance=m_c), child2[1], child2[2]) # mutate 50% of genes
                 
                 children.extend([child1, child2])
 

@@ -17,6 +17,8 @@ class Experiment():
             pop,
             dataset,
             problem,
+            mutation_strength,
+            mutation_prob,
             evo_gens,
             bound_gens,
             interval,
@@ -34,6 +36,8 @@ class Experiment():
         self._problem = problem
         self._prestep = prestep
 
+        self._mutation_s = mutation_strength
+        self._mutation_p = mutation_prob
         self._prestep_gens = prestep_gens
         self._evo_gens = evo_gens
         self._bound_gens = bound_gens
@@ -161,9 +165,12 @@ class Experiment():
             evolver.evolve(
                 generations=self._prestep_gens,
                 bound_estimation=False,
-                prestep=True
+                prestep=True,
+                m_r=self._mutation_s,
+                m_c=self._mutation_p
             )
 
+            print("evolved autoencoder population..")
             autopop = evolver.get_transfer_pop()
         #############################################
         #############################################
@@ -191,7 +198,9 @@ class Experiment():
                 evolver.evolve(
                     generations=self._bound_gens,
                     bound_estimation=True,
-                    prestep=False
+                    prestep=False,
+                    m_r=self._mutation_s,
+                    m_c=self._mutation_p
                 )
 
             bounds1 = evolver.get_bounds()[0]
@@ -232,7 +241,9 @@ class Experiment():
             evolver.evolve(
                 generations=self._evo_gens,
                 bound_estimation=False,
-                prestep=False
+                prestep=False,
+                m_r=self._mutation_s,
+                m_c=self._mutation_p
             )
 
             print(f"- {e}{suf} run finished")
