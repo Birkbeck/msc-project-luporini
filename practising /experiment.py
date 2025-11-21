@@ -20,9 +20,9 @@ class Experiment():
             bound_gens,
             interval,
             seed,
-            resume=False,
-            best_path="best.pth",
-            check_path="checkpoint.json"
+            best_path,
+            check_path,
+            resume=False
     ):
         self._model = model
         self._pop = pop
@@ -118,7 +118,7 @@ class Experiment():
         else:
             self._best = None
 
-    def run(self, runs, bound_estimation_runs=5):
+    def run(self, bound_estimation_runs, runs):
         
         if self._resume and self._check_filepath is not None:
             self._load_checkpoint(self._check_filepath)

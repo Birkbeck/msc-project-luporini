@@ -202,7 +202,7 @@ def normalise_objective(fitnesses: list, bound):
     return normalised_fitnesses
 
 
-def group_fitness(pop:list, bound:tuple, fn:function, bound_estimation:bool)->list:
+def group_fitness(pop:list, fn, bound_estimation:bool, bound:tuple)->list:
     """
     given a model pop and a fitness function, return fitness for each model
     - fitnesses are clamped between the given bound (empirical bounds!!!)
@@ -603,10 +603,10 @@ class NSGA2():
 
             
             self._fitnesses_1 = group_fitness( # clamped within emp_bounds
-                self._population, self._emp_bounds_1, fit_fn_1, bound_estimation
+                self._population, fit_fn_1, bound_estimation, self._emp_bounds_1
             )
             self._fitnesses_2 = group_fitness( # clamped within emp_bounds
-                self._population, self._emp_bounds_2, fit_fn_2, bound_estimation
+                self._population, fit_fn_2, bound_estimation, self._emp_bounds_2
             )
 
             ################################################
@@ -650,8 +650,12 @@ class NSGA2():
 
                                     # remodel(f,s,a,biggest)–>model!
             remodelled_children = [remodel(f, s, a, self._biggest) for f, s, a in children]
-            children_fitnesses_1 = group_fitness(remodelled_children, fit_fn_1)
-            children_fitnesses_2 = group_fitness(remodelled_children, fit_fn_2)
+            children_fitnesses_1 = group_fitness(
+                remodelled_children, fit_fn_1, bound_estimation, self._emp_bounds_1
+            )
+            children_fitnesses_2 = group_fitness(
+                remodelled_children, fit_fn_2, bound_estimation, self._emp_bounds_2
+            )
             all_solutions = self._population + remodelled_children
             all_fitnesses_1 = self._fitnesses_1 + children_fitnesses_1
             all_fitnesses_2 = self._fitnesses_2 + children_fitnesses_2
@@ -696,12 +700,12 @@ class NSGA2():
             else:
                 self._estimate_convergence()
 
+                print(f"gen:{gen}| #topo:{len(self._islands)}|{self.avg_convergence()}")
 
 
+            self._gen +=1
             #checkpoint only if NOT BOUND ESTIMATION
-            # self._gen +=1
-
-            print(f"gen:{gen}| bound_estimation:{bound_estimation}| #topo:{len(self._islands)}|{self.avg_convergence()}")
+            
 
             # if save and checkpoint_path:
             #     assert os.path.isdir(checkpoint_path)
