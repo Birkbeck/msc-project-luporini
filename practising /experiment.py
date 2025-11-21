@@ -22,7 +22,7 @@ class Experiment():
             seed,
             resume=False,
             best_path="best.pth",
-            checkpoint_path="checkpoint.json"
+            check_path="checkpoint.json"
     ):
         self._model = model
         self._pop = pop
@@ -34,7 +34,7 @@ class Experiment():
         self._seed = seed
         self._resume = resume
         self._best_filepath = best_path
-        self._check_filepath = checkpoint_path
+        self._check_filepath = check_path
 
         self._bound_estimation = False if self._resume else True
         self._bounds1 = None
@@ -193,9 +193,9 @@ class Experiment():
             self._avg_convs.append(conv_final)
             print(f"Avg population convergence: {round(conv_final, 2)}")
 
-
-            self._checkpoint(self._check_filepath) #⛔️
-            print(f"hit checkpoint!")
+            if self._check_filepath is not None:
+                self._checkpoint(self._check_filepath) #⛔️
+                print(f"hit checkpoint!")
 
 
             self._run +=1
