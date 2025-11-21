@@ -129,25 +129,25 @@ class Experiment():
         else:
             self._best = None
 
-
     ###########################################
-    ### actual experiment workflow ##########
     ###########################################
-    def run(self, bound_estimation_runs, runs):
-        ##############################################
+    # –––––––– EXPERIMENTAL WORKFLOW –––––––––
+    ###########################################
+    ###########################################
+    def run(self, bound_estimation_runs=10, runs=30):
+        
         ###### if resume, load checkpoint ########
-        ###############################################
         if self._resume and self._check_filepath is not None:
             self._load_checkpoint(self._check_filepath)
             if self._best_filepath is not None:
                 self._load_best(self._best_filepath)
         else:
             self._max_runs = runs
-        ##############################################
+        
         #############################################
-        ###### if prestep, autoencoder !!! ########
+        # –––––– if prestep, autoencoder !!! ––––––
         #############################################
-        ##############################################
+        
         if self._prestep:
             evolver = all.NSGA2(
                 pop_size=self._pop,
@@ -159,17 +159,17 @@ class Experiment():
             )
 
             evolver.evolve(
-                generations=self._bound_gens,
+                generations=self._prestep_gens,
                 bound_estimation=False,
                 prestep=True
             )
 
             autopop = evolver.get_transfer_pop()
-        ##############################################
         #############################################
-        ###### the actual classifier/YOLO exp ########
         #############################################
-        ##############################################
+        # ––– YOLO/classifier experiment (–>DV) –––
+        #############################################
+        #############################################
         if self._bound_estimation:
             print("\n- estimating fitness bounds..")
             for e in range(bound_estimation_runs):
@@ -199,9 +199,9 @@ class Experiment():
             self._bounds1 = bounds1
             self._bounds2 = bounds2
             print("- bounds have been estimated..")
-        ################################
-        #### starting experimental runs
-        ################################
+        ########################################
+        # –––– starting experimental runs –––––
+        ########################################
         for e in range(self._run, self._max_runs):
             suf = "st" if e==1 else "nd" if e==2 else "th" 
 
@@ -238,7 +238,7 @@ class Experiment():
             print(f"- {e}{suf} run finished")
 
             ################################################
-            # update best if current is 'better' than stored
+            # update best if current best better than stored
             ################################################
             besto = evolver.get_best()
             if self._best is None or besto[1] < self._best[1]:
