@@ -419,7 +419,7 @@ class NSGA2():
         maxo = np.percentile(fitnesses, 95)
         return mino, maxo
     
-    def _update_convergence(self):
+    def _estimate_convergence(self):
         """
         given the current population,
         update the model closer to the ideal solution
@@ -651,7 +651,7 @@ class NSGA2():
                         self._emp_bounds_1 = self._bounds_estimation(self._fitnesses_1_pool)
                         self._emp_bounds_2 = self._bounds_estimation(self._fitnesses_2_pool)
                 else:
-                    self._update_convergence()
+                    self._estimate_convergence()
                     
                     f1 = fronts[0] # last non-dominated front
                     f1_length = len(f1)
