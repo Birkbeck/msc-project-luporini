@@ -442,7 +442,7 @@ class NSGA2():
                 self._best_model = deepcopy(best_model)
                 self._best_convergence = best_convergence
     
-    def conv_in_time(self):
+    def avg_convergence(self):
         """returns list of avg.pop distance from ideal point per generation"""
         return [sum(i)/len(i) for i in self._convergence]
     
@@ -451,7 +451,7 @@ class NSGA2():
         Deb's delta from the original paper (2002)
         normalised crowding distance of the last non-dominated front
         """
-
+        
         
 
     def _clear_attributes(self, bound1, bound2):
