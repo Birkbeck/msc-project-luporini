@@ -474,9 +474,6 @@ class NSGA2():
             self._spread.append(float("nan")) # ⁉️
 
         
-        
-        
-
     def _clear_attributes(self, bound1, bound2):
         self._fitnesses_1 = None
         self._fitnesses_2 = None
@@ -652,6 +649,7 @@ class NSGA2():
                         self._emp_bounds_2 = self._bounds_estimation(self._fitnesses_2_pool)
                 else:
                     self._estimate_convergence()
+                    avg_conv = sum(self._convergence[-1]) / len(self._convergence)
                     
                     f1 = fronts[0] # last non-dominated front
                     f1_length = len(f1)
@@ -662,7 +660,8 @@ class NSGA2():
                     
                     self._estimate_spread(best_1, best_2) # Deb's ∆
 
-                    print(f"gen:{gen} | #topo:{len(self._islands)} | {round(self.avg_convergence(), 5)}")
+
+                    print(f"gen:{gen} | #topo:{len(self._islands)} | avg_conv: {avg_conv} | ∆: {self._spread[-1]}")
 
         #########################################
         ####### IF NOT PRESTEP: ################
