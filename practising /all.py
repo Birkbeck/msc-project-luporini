@@ -566,7 +566,8 @@ class NSGA2():
     ):
         
         for gen in range(generations):
-            print(f" - gen {gen}")
+            if prestep:
+                print(f" - gen {gen}")
 
             loader_sample = self._sample_loader(subset_fraction)
             fit_fn_1 = self._fit_fn_1(loader_sample, self._problem)

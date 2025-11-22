@@ -201,6 +201,7 @@ class Experiment():
         #############################################
         
         if self._prestep:
+            print("evolving autoencoders..")
             self._setup()
 
             evolver = all.NSGA2(
@@ -221,7 +222,7 @@ class Experiment():
                 m_c=self._mutation_p
             )
 
-            print("evolved autoencoder population..")
+            print("autoencoders finished!")
             self._autopop = evolver.get_transfer_pop(self._model1, self._input_shape, classes=self._classes)
             self._save_autopop(self._experiment_path / "autopop.pth")
 
