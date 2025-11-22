@@ -299,12 +299,12 @@ class Experiment():
             if self._best is None or besto[1] < self._best[1]:
                 self._best = besto
 
-            ####################
-            # extract results
-            ###################
+            ##################################
+            # extract results: conv + spread
+            #################################
             front = evolver.get_best_front()
-            conv = evolver.conv_in_time()
-            conv_final = evolver.avg_convergence()
+            conv = evolver.avg_convergence()
+            conv_final = conv[-1]
 
             self._fronts.append(front)
             self._convs_in_time.append(conv)

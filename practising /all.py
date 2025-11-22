@@ -312,8 +312,11 @@ def convergence(*fits):
     return math.sqrt(sum((f - 1)**2 for f in fits))
 
         
-# def spread()
-
+def euclidean(point1:tuple, point2:tuple)->float:
+    """euclidean distance between points in 2D """
+    x1, y1 = point1
+    x2, y2 = point2
+    return math.sqrt((x1-x2)**2 + (y1-y2)**2)
 
 
 class NSGA2():
@@ -363,6 +366,7 @@ class NSGA2():
         self._fitnesses_1_pool = []
         self._fitnesses_2_pool = []
         self._convergence = [] # list of lists: normalised distances per generation
+        self._spread = [] # list of ints: Deb's ∆ per generation
         self._best_model = None
         self._best_convergence = None
         self._emp_bounds_1 = None # empirical bounds per objective
@@ -442,15 +446,34 @@ class NSGA2():
                 self._best_model = deepcopy(best_model)
                 self._best_convergence = best_convergence
     
-    def avg_convergence(self):
-        """returns list of avg.pop distance from ideal point per generation"""
-        return [sum(i)/len(i) for i in self._convergence]
-    
-    def _estimate_spread(self, front, fitness1, fitness2):
+    def _estimate_spread(self, fits1:list, fits2:list)->float:
         """
+        ⛔️ fitnesses already normalised ⛔️
+
         Deb's delta from the original paper (2002)
         normalised crowding distance of the last non-dominated front
+        - trivial for one point
+        - poorly informative for two points(∆ = 2/3 d, d=distance1-2)
         """
+        if len(fits1) >= 3:
+            points = sorted(zip(fits1, fits2), key=lambda x: x[0]) # sort by fits1
+            N = len(points)
+
+            distances = [euclidean(points[i], points[i+1]) for i in range(N - 1)]
+
+            d_f, d_l = distances[0], distances[-1]
+            avg_d = sum(distances) / len(distances)
+
+            numerator = d_f + d_l + sum(abs(d - avg_d) for d in distances)
+            denominator = d_f + d_l + (N - 1) * avg_d
+
+            delta = numerator / denominator if denominator != 0 else float("nan")
+        
+            self._spread.append(delta)
+        else:
+            self._spread.append(float("nan")) # ⁉️
+
+        
         
         
 
@@ -462,6 +485,20 @@ class NSGA2():
         self._best_convergence = None
         self._emp_bounds_1 = bound1 # empirical bounds per objective
         self._emp_bounds_2 = bound2
+    
+    def get_bounds(self):
+        return self._emp_bounds_1, self._emp_bounds_2
+    
+    def set_bounds(self, b1, b2):
+        self._emp_bounds_1 = b1
+        self._emp_bounds_2 = b2
+    
+    def avg_convergence(self):
+        """returns list of avg.pop distance from ideal point per generation"""
+        return [sum(i)/len(i) for i in self._convergence]
+    
+    def final_convergence(self):
+        return self.avg_convergence()[-1]
 
     def get_best(self):
         best = self._best_model, self._best_convergence
@@ -473,13 +510,6 @@ class NSGA2():
             "convergence": self._best_convergence
         }
         torch.save(best, filepath)
-    
-    def get_bounds(self):
-        return self._emp_bounds_1, self._emp_bounds_2
-    
-    def set_bounds(self, b1, b2):
-        self._emp_bounds_1 = b1
-        self._emp_bounds_2 = b2
     
     def get_best_front(self):
         return self._best_front
@@ -622,6 +652,15 @@ class NSGA2():
                         self._emp_bounds_2 = self._bounds_estimation(self._fitnesses_2_pool)
                 else:
                     self._update_convergence()
+                    
+                    f1 = fronts[0] # last non-dominated front
+                    f1_length = len(f1)
+                    f1_fitnesses_1 = self._fitnesses_1[:f1_length]
+                    f1_fitnesses_2 = self._fitnesses_2[:f1_length]
+                    best_1 = normalise_objective(f1_fitnesses_1, self._emp_bounds_1) 
+                    best_2 = normalise_objective(f1_fitnesses_2, self._emp_bounds_2)
+                    
+                    self._estimate_spread(best_1, best_2) # Deb's ∆
 
                     print(f"gen:{gen} | #topo:{len(self._islands)} | {round(self.avg_convergence(), 5)}")
 
@@ -629,19 +668,14 @@ class NSGA2():
         ####### IF NOT PRESTEP: ################
         #########################################
         # get the first front of the last generation
-        # ⛔️ in a normalised space !!!
+        # ⛔️ in a normalised space !!! FOR PLOTTING!!!
         # ⛔️ ASSUMPTION: updating self._population, self._fitnesses_1/2
         # during selection is done adding fronts in order!!!
         if not prestep and not bound_estimation:
-            f1 = fronts[0] # last non-dominated front
-            f1_length = len(f1)
-            f1_fitnesses_1 = self._fitnesses_1[:f1_length]
-            f1_fitnesses_2 = self._fitnesses_2[:f1_length]
-            best_y = normalise_objective(f1_fitnesses_1, self._emp_bounds_1) 
-            best_x = normalise_objective(f1_fitnesses_2, self._emp_bounds_2)
+            self._best_front = list(best_1, best_2)
 
-            self._estimate_spread(f1, best_y, best_x)
-            self._best_front = list(zip(best_x, best_y))
+
+            
             
 
 
