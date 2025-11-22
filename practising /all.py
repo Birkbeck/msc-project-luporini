@@ -322,10 +322,9 @@ def crowding_distance(front, *objectives):
     return distances
 
 # HELPER FUNCTIONS for evaluation convergence and spread⛔️
-def convergence(*fits):
+def convergence(p1, p2):
     """for a model: Euclidean distance from ideal s in nD"""
-    return math.sqrt(sum((f - 1)**2 for f in fits))
-
+    return math.sqrt((p1 - 1)**2 + (p2 - 1)**2)
         
 def euclidean(point1:tuple, point2:tuple)->float:
     """euclidean distance between points in 2D """
@@ -446,7 +445,7 @@ class NSGA2():
         normalised_y = normalise_objective(self._fitnesses_1, self._emp_bounds_1) # y fitness
 
         # getting distance from ideal for each model 
-        distances = [] # and record in self._convergence as pop_avg per gen
+        distances = [] # and record in self._convergence 
         for i in range(self._pop_size):
             distances.append(convergence(normalised_x[i], normalised_y[i]))
         self._convergence.append(distances)

@@ -31,10 +31,12 @@ class Experiment():
             mutation_strength=0.3,
             mutation_prob=0.2,
             
+            checkpoint=True,
             device=None,
             resume=False,
             prestep=False,
-            prestep_gens=0
+            prestep_gens=0,
+            git=False
     ):
         self._model1 = model1
         self._model2 = model2
@@ -47,6 +49,8 @@ class Experiment():
         self._problem = problem
         self._prestep = prestep
         self._device = device
+        self._git = git
+        self._check = checkpoint
 
         self._mutation_s = mutation_strength
         self._mutation_p = mutation_prob
@@ -335,17 +339,19 @@ class Experiment():
             ##################
             # checkpoint !!!!
             ###################
-            checkpath = self._experiment_path/f"checkpoint_{e+1}.json"
-            self._checkpoint(checkpath) #⛔️
-            print(f"\nhit checkpoint! next run coming..")
+            if self._check:
+                checkpath = self._experiment_path/f"checkpoint_{e+1}.json"
+                self._checkpoint(checkpath) #⛔️
+                print(f"\nhit checkpoint! next run coming..")
 
             ##################
             # git control !!!!
             ###################
-            print("\ngit!!!")
-            subprocess.run(["git", "add", "."])
-            subprocess.run(["git", "commit", "-m", f"finished run {e+1} for {self._dataset}_{self._exp_condition}"])
-            subprocess.run(["git", "push"]) # yep, you need it for colab
+            if self._git:
+                print("\ngit!!!")
+                subprocess.run(["git", "add", "."])
+                subprocess.run(["git", "commit", "-m", f"finished run {e+1} for {self._dataset}_{self._exp_condition}"])
+                subprocess.run(["git", "push"]) # yep, you need it for colab
         #############################################
         # –––-----– runs are over ––––––---
         #############################################
