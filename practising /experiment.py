@@ -1,7 +1,6 @@
 import random
 import json
 import os
-from pathlib import Path
 import numpy as np
 import torch
 import all
@@ -282,7 +281,7 @@ class Experiment():
             evolver.set_bounds(b1=self._bounds1, b2=self._bounds2)
 
             # actual evolution !!!
-            print("- starting actual evolution..")
+            print("- actual evolution..")
             evolver.evolve(
                 generations=self._evo_gens,
                 bound_estimation=False,

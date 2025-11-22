@@ -1,27 +1,27 @@
 # don't call mnist_control.py
 # just call playgroud.py ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
 
-import sys
-import os
 from pathlib import Path
 import experiment as exp
 import torch
 from architectures import TinyConvClassifier, TinyFlexyConvAE
 
 
-model1 = TinyConvClassifier
-model2 = TinyFlexyConvAE
-pop = 10
 dataset = "mnist" # mnist, cifar, fashion
 problem = "classification"
-prestep = False # autoencoder condition?
+prestep = False # enable AE condition
 prestep_gens = None
+
+model1 = TinyConvClassifier # main model
+model2 = TinyFlexyConvAE # autoencoder for AE condition
+
+interval = [1, 4]
+pop = 10
+evo_gens = 2
+bound_gens = 2
 
 mutation_strength = .3 
 mutation_probability = .1
-evo_gens = 2
-bound_gens = 2
-interval = [1, 4]
 seed = 37
 
 resume = False # from checkpoint?

@@ -1,8 +1,5 @@
-import os
-
 import random
 import time
-import copy
 from copy import deepcopy
 from collections import defaultdict
 import math
@@ -418,7 +415,7 @@ class NSGA2():
         maxo = np.percentile(fitnesses, 95)
         return mino, maxo
     
-    def _estimate_convergence(self):
+    def _update_convergence(self):
         """
         given the current population,
         update the model closer to the ideal solution
@@ -445,6 +442,18 @@ class NSGA2():
                 self._best_model = deepcopy(best_model)
                 self._best_convergence = best_convergence
     
+    def conv_in_time(self):
+        """returns list of avg.pop distance from ideal point per generation"""
+        return [sum(i)/len(i) for i in self._convergence]
+    
+    def _estimate_spread(self, front, fitness1, fitness2):
+        """
+        Deb's delta from the original paper (2002)
+        normalised crowding distance of the last non-dominated front
+        """
+
+        
+
     def _clear_attributes(self, bound1, bound2):
         self._fitnesses_1 = None
         self._fitnesses_2 = None
@@ -474,56 +483,6 @@ class NSGA2():
     
     def get_best_front(self):
         return self._best_front
-    
-    def conv_in_time(self):
-        """returns list of avg.pop distance from ideal point per generation"""
-        return [sum(i)/len(i) for i in self._convergence]
-    
-    def avg_convergence(self):
-        """get FINAL population convergence (mean convergence at last gen)"""
-        avg_convergence = sum(self._convergence[-1])/self._pop_size
-        return avg_convergence
-    
-    def plot_convergence(self):
-        """"""
-        distances = self.conv_in_time()
-        
-        _, ax = plt.subplots()
-        ax.plot(range(len(distances)), distances)
-        ax.set_xlabel("generation")
-        ax.set_ylabel("avg. distance from ideal solution")
-        plt.show()
-    
-    # def reset(self, model, pop_size, interval, bound1, bound2):
-    #     self._population = [
-    #         deepcopy(
-    #             model(
-    #                 input_shape=self._input_shape,
-    #                 stride=random.randint(interval[0], interval[1])
-    #             ).to(mydevice)
-    #         ) for i in range(pop_size)
-    #     ]
-    #     self._clear_attributes(bound1, bound2)
-    #     self._gen = 0
-    #     self._max_gen = None
-    
-
-    # def transfer(self, model, bound1, bound2, freeze=False):
-    #     """should I just swap the new pop in??"""
-    #     pop = []
-    #     for m in self._population:
-    #         weights = m.encoder.state_dict()
-    #         new = model(m, stride=m.get_stride()).to(mydevice)
-    #         new.encoder.load_state_dict(weights)
-
-    #         if freeze:
-    #             for param in new.parameters():
-    #                 param.requires_grad = False
-
-    #         pop.append(new)
-        
-    #     self._population = pop
-    #     self._clear_attributes(bound1, bound2)
 
     def get_transfer_pop(self, model, freeze=False):
         """should I just swap the new pop in??"""
@@ -662,7 +621,7 @@ class NSGA2():
                         self._emp_bounds_1 = self._bounds_estimation(self._fitnesses_1_pool)
                         self._emp_bounds_2 = self._bounds_estimation(self._fitnesses_2_pool)
                 else:
-                    self._estimate_convergence()
+                    self._update_convergence()
 
                     print(f"gen:{gen} | #topo:{len(self._islands)} | {round(self.avg_convergence(), 5)}")
 
@@ -673,15 +632,18 @@ class NSGA2():
         # ⛔️ in a normalised space !!!
         # ⛔️ ASSUMPTION: updating self._population, self._fitnesses_1/2
         # during selection is done adding fronts in order!!!
-        if not prestep:
-            f1_length = len(fronts[0])
+        if not prestep and not bound_estimation:
+            f1 = fronts[0] # last non-dominated front
+            f1_length = len(f1)
             f1_fitnesses_1 = self._fitnesses_1[:f1_length]
             f1_fitnesses_2 = self._fitnesses_2[:f1_length]
             best_y = normalise_objective(f1_fitnesses_1, self._emp_bounds_1) 
             best_x = normalise_objective(f1_fitnesses_2, self._emp_bounds_2)
 
+            self._estimate_spread(f1, best_y, best_x)
             self._best_front = list(zip(best_x, best_y))
             
+
 
 
 
