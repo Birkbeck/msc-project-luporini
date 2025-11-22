@@ -121,6 +121,10 @@ class Experiment():
             pop.append(new)
         
         self._autopop = pop
+    
+    def _save_results(self, path):
+        with open(path, "w") as f:
+            json.dump(self._results, f)
 
 
     def _save_best(self, path):
@@ -151,7 +155,7 @@ class Experiment():
     def get_results(self):
         return self._results
     
-    
+
     ###########################################
     ###########################################
     # –––––––– EXPERIMENTAL WORKFLOW –––––––––
@@ -294,18 +298,19 @@ class Experiment():
             # extract results: conv + spread
             #################################
             front = evolver.get_best_front() # (fits1, fits2) (plot)
-            conv = evolver.avg_convergence() # avg per gen (plot)
-            conv_final = evolver.final_convergence() # final gen (dv)
+            convergence = evolver.avg_convergence() # avg per gen (plot)
+            f_convergence = evolver.final_convergence() # final gen (dv)
 
             deltas = evolver.get_deltas()
-            delta_final = evolver.final_delta()
+            f_delta = evolver.final_delta()
+
 
             result = {
                 "front": front,
-                "conv": conv,
-                "conv_final": conv_final,
+                "conv": convergence,
+                "conv_final": f_convergence,
                 "deltas": deltas, 
-                "delta_final": delta_final
+                "delta_final": f_delta
             }
 
             self._results.append(result)
@@ -325,6 +330,10 @@ class Experiment():
         #############################################
         # –––-----– runs are over ––––––---
         #############################################
+        # --------- save results ––––––––––
+
+
+        # ---–---- save best model ––––––––
         bestpath = self._experiment_path/f"best.pth"
         if bestpath is not None:
             self._save_best(bestpath)
