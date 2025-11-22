@@ -13,28 +13,35 @@ from torchvision.datasets import MNIST, FashionMNIST, CIFAR10
 class Experiment():
     def __init__(
             self,
-            model,
+            model1, # classifier/detector
+            model2, # AE
             pop,
             dataset,
             problem,
+            # device, # ⛔️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️
+
             mutation_strength,
             mutation_prob,
             evo_gens,
             bound_gens,
             interval,
             seed,
-            best_path,
-            check_path,
+
+            experiment_path,
+            device=None,
             resume=False,
             prestep=False,
             prestep_gens=0
     ):
-        self._model = model
+        self._model1 = model1
+        self._model2 = model2
         self._pop = pop
+        self._autopop = None
         self._dataset = dataset.lower()
         self._interval = interval
         self._problem = problem
         self._prestep = prestep
+        self._device = device
 
         self._mutation_s = mutation_strength
         self._mutation_p = mutation_prob
@@ -44,10 +51,7 @@ class Experiment():
 
         self._seed = seed
         self._resume = resume
-        self._best_filepath = best_path
-        self._check_filepath = check_path
-
-        
+        self._experiment_path = experiment_path
 
         self._bound_estimation = False if self._resume else True
         self._bounds1 = None
@@ -96,12 +100,13 @@ class Experiment():
                 "bounds1": self._bounds1,
                 "bounds2": self._bounds2,
                 "run": self._run,
+                "seed": self._seed,
                 "max_runs": self._max_runs,
             }, f)
     
-    def _load_checkpoint(self, checkpoint):
+    def _load_checkpoint(self, checkpath):
         """checkpoint = file.json"""
-        with open(checkpoint, "r") as f:
+        with open(checkpath, "r") as f:
             data = json.load(f)
 
         self._fronts = data["fronts"]
@@ -110,8 +115,30 @@ class Experiment():
         self._bounds1 = data["bounds1"]
         self._bounds2 = data["bounds2"]
         self._run = data["run"]
+        self._seed = data["seed"]
         self._max_runs = data["max_runs"]
+
+    def _save_autopop(self, path): # for autopop!!!! ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
+        d = dict()
+        for i in range(len(self._autopop)):
+            d[i] = {}
+            d[i]["weights"] = self._autopop[i].state_dict()
+            d[i]["stride"] = self._autopop[i].get_stride()
+        torch.save(d, path)
     
+    def _load_autopop(self, path, model):
+        data = torch.load(path)
+        pop = []
+        for i in sorted(data):
+            w = data[i]["weights"]
+            s = data[i]["stride"]
+            new = model(stride=s)
+            new.load_state_dict(w)
+            pop.append(new)
+        
+        self._autopop = pop
+
+
     def _save_best(self, path):
         model, conv = self._best
         stride = model.get_stride()
@@ -123,6 +150,7 @@ class Experiment():
 
     def _load_best(self, path):
         if os.path.exists(path):
+        # if Path(path).exists():
             data = torch.load(path)
             s = data["stride"]
             c = data["convergence"]
@@ -139,12 +167,26 @@ class Experiment():
     ###########################################
     ###########################################
     def run(self, bound_estimation_runs=10, runs=30):
+        # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
+        # create appropriate directory if directory does not exists
+        # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
+        self._experiment_path.mkdir(parents=True, exist_ok=True)
         
         ###### if resume, load checkpoint ########
-        if self._resume and self._check_filepath is not None:
-            self._load_checkpoint(self._check_filepath)
-            if self._best_filepath is not None:
-                self._load_best(self._best_filepath)
+        if self._resume and self._experiment_path is not None:
+            checkpoints = sorted(self._experiment_path.glob(f"checkpoint_*.json"))
+            if checkpoints:
+                last_checkpoint = checkpoints[-1]
+                self._load_checkpoint(last_checkpoint)
+            
+            bestpath = self._experiment_path / "best.pth"
+            if bestpath.exists() and bestpath.is_file():
+                self._load_best(bestpath)
+            
+            autopath = self._experiment_path / "autopop.pth"
+            if autopath.exists() and autopath.is_file():
+                self._load_autopop(autopath)
+            
         else:
             self._max_runs = runs
         
@@ -155,11 +197,12 @@ class Experiment():
         if self._prestep:
             evolver = all.NSGA2(
                 pop_size=self._pop,
-                model=self._model,
+                model=self._model2, # autoencoders!
                 input_shape=self._input_shape,
                 interval=self._interval,
                 data=self._train,
-                problem="AE"
+                problem="AE",
+                device=self._device
             )
 
             evolver.evolve(
@@ -171,7 +214,10 @@ class Experiment():
             )
 
             print("evolved autoencoder population..")
-            autopop = evolver.get_transfer_pop()
+            self._autopop = evolver.get_transfer_pop()
+            self._save_autopop(self._experiment_path / "autopop.pth")
+
+            # self._checkpoint() # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
         #############################################
         #############################################
         # ––– YOLO/classifier experiment (–>DV) –––
@@ -185,15 +231,16 @@ class Experiment():
 
                 evolver = all.NSGA2(
                     pop_size=self._pop,
-                    model=self._model,
+                    model=self._model1,
                     input_shape=self._input_shape,
                     interval=self._interval,
                     data=self._train,
-                    problem=self._problem
+                    problem=self._problem,
+                    device=self._device
                 )
 
                 if self._prestep:
-                    evolver.transfer_pop(autopop) # ⛔️
+                    evolver.transfer_pop(self._autopop) # ⛔️
 
                 evolver.evolve(
                     generations=self._bound_gens,
@@ -214,9 +261,6 @@ class Experiment():
         for e in range(self._run, self._max_runs):
             suf = "st" if e==1 else "nd" if e==2 else "th" 
 
-            # adjusting checkpoint filename according to run
-            checkpath = self._check_filepath/f"checkpoint_{e}.json"
-
             # setting seed and preparing data
             print(f"\n- beginning {e}{suf} run")
             self._set_seed()
@@ -224,15 +268,16 @@ class Experiment():
 
             evolver = all.NSGA2(
                 pop_size=self._pop,
-                model=self._model,
+                model=self._model1,
                 input_shape=self._input_shape,
                 interval=self._interval,
                 data=self._train,
-                problem=self._problem
+                problem=self._problem,
+                device=self._device
             )
             
             if self._prestep:
-                evolver.transfer_pop(autopop)
+                evolver.transfer_pop(self._autopop)
 
             evolver.set_bounds(b1=self._bounds1, b2=self._bounds2)
 
@@ -267,15 +312,16 @@ class Experiment():
             self._avg_convs.append(conv_final)
             print(f"- last population convergence: {round(conv_final, 2)}")
 
-            if self._check_filepath is not None:
-                self._checkpoint(checkpath) #⛔️
-                print(f"- hit checkpoint!")
+            # adjusting checkpoint filename according to run
+            checkpath = self._experiment_path/f"checkpoint_{e}.json"
+            self._checkpoint(checkpath) #⛔️
+            print(f"- hit checkpoint!")
 
 
             self._run +=1
             # update seed for next run
             self._seed += 2
 
-        bestpath = self._best_filepath/f"best_{self._dataset}_{}"
-        if self._best_filepath is not None:
-            self._save_best(self._best_filepath)
+        bestpath = self._experiment_path/f"best.pth"
+        if bestpath is not None:
+            self._save_best(bestpath)

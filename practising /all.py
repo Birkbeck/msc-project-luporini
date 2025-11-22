@@ -14,9 +14,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Subset
 
-mydevice = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-def flatten(model):
+def flatten(model, device):
     """
      flatten each parameter into a 1D tensor and concatenate
     """
@@ -67,6 +65,7 @@ def remodel(embedded, original_size, model, biggest):
 # rename to distinguish from crossover() in genalgo?
 def crossover(parent1: tuple, parent2: tuple)-> tuple[torch.Tensor, torch.Tensor]:
     """
+    ALWAYS PERFORMED BY DESIGN
     masked crossover between two flat models:
     Args:
        parent1: flat model
@@ -130,7 +129,7 @@ def model_fitness(data: DataLoader, problem="AE"):
         out = lambda X, y: X
     
     def fitness(model):
-        device=next(model.parameters()).device
+        device = next(model.parameters()).device
         model.eval()
         with torch.no_grad():
             tot_loss = 0
@@ -341,20 +340,22 @@ class NSGA2():
             data,
             input_shape=(1, 28, 28),
             interval=[1, 4], # small interval compared to pop_size? ⛔️ representativeness
-            problem = "AE"
+            problem="AE",
+            device=None
     ):
         self._islands = None
         self._data = data
         self._input_shape = input_shape
         self._model = model # needs to be a class, not an istance!
         self._problem = problem
+        self._device = device
         self._pop_size = pop_size
         self._population = [
             deepcopy(
                 model(
                     input_shape=input_shape,
                     stride=random.randint(interval[0], interval[1])
-                ).to(mydevice)
+                ).to(device)
             ) for i in range(pop_size)
         ]
 
@@ -529,7 +530,7 @@ class NSGA2():
         pop = []
         for m in self._population:
             weights = m.encoder.state_dict()
-            new = model(m, stride=m.get_stride()).to(mydevice)
+            new = model(m, stride=m.get_stride()).to(self._device)
             new.encoder.load_state_dict(weights)
 
             if freeze:
