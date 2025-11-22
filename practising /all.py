@@ -359,24 +359,26 @@ class NSGA2():
             ) for i in range(pop_size)
         ]
 
+        self._biggest = max(
+            sum(param.numel() for param in m.parameters()) # ⛔️ will change mid run????
+            for m in self._population
+        )
+
+        self._emp_bounds_1 = None # empirical bounds per objective
+        self._emp_bounds_2 = None
+
         self._fit_fn_1 = model_fitness#(data, problem=problem) #model_fitness is HIGHER ORDER
         self._fit_fn_2 = model_runtime#(data)
         self._fitnesses_1 = None
         self._fitnesses_2 = None # why was it missing⁉️⁉️⁉️⁉️⁉️⁉️⁉️
         self._fitnesses_1_pool = []
         self._fitnesses_2_pool = []
+        
         self._convergence = [] # list of lists: normalised distances per generation
-        self._spread = [] # list of ints: Deb's ∆ per generation
+        self._deltas = [] # list of ints: Deb's ∆ per generation
         self._best_model = None
         self._best_convergence = None
-        self._emp_bounds_1 = None # empirical bounds per objective
-        self._emp_bounds_2 = None
         self._best_front = None
-
-        self._biggest = max(
-            sum(param.numel() for param in m.parameters()) # ⛔️ will change mid run????
-            for m in self._population
-        )
 
         # self._gen = 0
         # self._max_gen = None
@@ -469,9 +471,9 @@ class NSGA2():
 
             delta = numerator / denominator if denominator != 0 else float("nan")
         
-            self._spread.append(delta)
+            self._deltas.append(delta)
         else:
-            self._spread.append(float("nan")) # ⁉️
+            self._deltas.append(float("nan")) # ⁉️
 
         
     def _clear_attributes(self, bound1, bound2):
@@ -496,6 +498,12 @@ class NSGA2():
     
     def final_convergence(self):
         return self.avg_convergence()[-1]
+    
+    def get_deltas(self):
+        return self._deltas
+    
+    def final_delta(self):
+        return self._deltas[-1]
 
     def get_best(self):
         best = self._best_model, self._best_convergence
@@ -529,6 +537,8 @@ class NSGA2():
 
     def transfer_pop(self, pop):
         self._population = pop
+
+
 
     def evolve(
             self,
