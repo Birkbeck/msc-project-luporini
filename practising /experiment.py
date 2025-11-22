@@ -296,7 +296,7 @@ class Experiment():
             evolver.set_bounds(b1=self._bounds1, b2=self._bounds2)
 
             # actual evolution !!!
-            print(f"- beginning {e+1} run")
+            print(f"* beginning {e+1} run")
             evolver.evolve(
                 generations=self._evo_gens,
                 bound_estimation=False,

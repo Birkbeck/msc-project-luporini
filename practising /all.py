@@ -441,13 +441,13 @@ class NSGA2():
         update the model closer to the ideal solution
         and its distance from this ideal solution.
         """
-        normalised_x = normalise_objective(self._fitnesses_2, self._emp_bounds_2) # x speed
-        normalised_y = normalise_objective(self._fitnesses_1, self._emp_bounds_1) # y fitness
-
+        normalised_1 = normalise_objective(self._fitnesses_1, self._emp_bounds_1) # y fitness
+        normalised_2 = normalise_objective(self._fitnesses_2, self._emp_bounds_2) # x speed
+        
         # getting distance from ideal for each model 
         distances = [] # and record in self._convergence 
         for i in range(self._pop_size):
-            distances.append(convergence(normalised_x[i], normalised_y[i]))
+            distances.append(convergence(normalised_1[i], normalised_2[i]))
         self._convergence.append(distances)
 
         # finding most balanced model (closest to ideal)
@@ -678,7 +678,7 @@ class NSGA2():
                         self._emp_bounds_2 = self._bounds_estimation(self._fitnesses_2_pool)
                 else:
                     self._estimate_convergence()
-                    avg_conv = sum(self._convergence[-1]) / len(self._convergence)
+                    avg_conv = sum(self._convergence[-1]) / len(self._convergence[-1])
                     
                     f1 = fronts[0] # last non-dominated front
                     f1_length = len(f1)
