@@ -17,7 +17,6 @@ class Experiment():
             pop,
             dataset,
             problem,
-            # device, # ⛔️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️⁉️
 
             mutation_strength,
             mutation_prob,
@@ -191,6 +190,8 @@ class Experiment():
         #############################################
         
         if self._prestep:
+            self._setup()
+            
             evolver = all.NSGA2(
                 pop_size=self._pop,
                 model=self._model2, # autoencoders!
@@ -331,9 +332,11 @@ class Experiment():
         # –––-----– runs are over ––––––---
         #############################################
         # --------- save results ––––––––––
-
+        resultpath = self._experiment_path/"results.json"
+        if resultpath is not None:
+            self._save_results(resultpath)
 
         # ---–---- save best model ––––––––
-        bestpath = self._experiment_path/f"best.pth"
+        bestpath = self._experiment_path/"best.pth"
         if bestpath is not None:
             self._save_best(bestpath)
