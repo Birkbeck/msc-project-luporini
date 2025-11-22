@@ -57,9 +57,6 @@ workflow.run(
     bound_estimation_runs=2, runs=2
 )
 
-fronts = workflow.get_fronts()     
-avg_convs = workflow.get_avg_convs()        
-convs_in_time = workflow.get_convs_in_time()
-empirical_bounds = workflow.get_empirical_bounds()
+results = workflow.get_results()
         
 

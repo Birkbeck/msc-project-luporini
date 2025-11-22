@@ -48,30 +48,19 @@ class Experiment():
         self._evo_gens = evo_gens
         self._bound_gens = bound_gens
 
-        self._seed = seed
         self._resume = resume
-        self._experiment_path = experiment_path
-
         self._bound_estimation = False if self._resume else True
         self._bounds1 = None
         self._bounds2 = None
+
+        self._seed = seed
+        self._experiment_path = experiment_path
 
         self._run = 0
         self._max_runs = None
 
         self._best = None
-        self._fronts = []
-        self._avg_convs = []
-        self._convs_in_time = []
-    
-    def get_fronts(self):
-        return self._fronts
-    def get_avg_convs(self):
-        return self._avg_convs
-    def get_convs_in_time(self):
-        return self._convs_in_time
-    def get_empirical_bounds(self):
-        return self._bounds1, self._bounds2
+        self._results = [] # list of dictionaries per run
 
     def _setup(self):
         if self._dataset == "mnist":
@@ -93,9 +82,7 @@ class Experiment():
     def _checkpoint(self, filepath):
         with open(filepath, "w") as f:
             json.dump({
-                "fronts": self._fronts,
-                "avg_convs": self._avg_convs,
-                "convs_in_time": self._convs_in_time,
+                "results": self._results,
                 "bounds1": self._bounds1,
                 "bounds2": self._bounds2,
                 "run": self._run,
@@ -108,9 +95,7 @@ class Experiment():
         with open(checkpath, "r") as f:
             data = json.load(f)
 
-        self._fronts = data["fronts"]
-        self._avg_convs = data["avg_convs"]
-        self._convs_in_time = data["convs_in_time"]
+        self._results = data["results"]
         self._bounds1 = data["bounds1"]
         self._bounds2 = data["bounds2"]
         self._run = data["run"]
@@ -154,12 +139,19 @@ class Experiment():
             s = data["stride"]
             c = data["convergence"]
             w = data["weights"]
-            new = self._model(stride=s)
+            new = self._model1(stride=s)
             new.load_state_dict(w)
             self._best = (new, c)
         else:
             self._best = None
 
+    def get_empirical_bounds(self):
+        return self._bounds1, self._bounds2
+    
+    def get_results(self):
+        return self._results
+    
+    
     ###########################################
     ###########################################
     # –––––––– EXPERIMENTAL WORKFLOW –––––––––
@@ -185,6 +177,7 @@ class Experiment():
             autopath = self._experiment_path / "autopop.pth"
             if autopath.exists() and autopath.is_file():
                 self._load_autopop(autopath)
+                self._prestep = False
             
         else:
             self._max_runs = runs
@@ -258,7 +251,7 @@ class Experiment():
         # –––– starting experimental runs –––––
         ########################################
         for e in range(self._run, self._max_runs):
-            suf = "st" if e==1 else "nd" if e==2 else "th" 
+            suf = "st" if e==1 else "nd" if e==2 else "rd" if e==3 else "th" 
 
             # setting seed and preparing data
             print(f"\n- beginning {e}{suf} run")
@@ -292,9 +285,7 @@ class Experiment():
 
             print(f"- {e}{suf} run finished")
 
-            ################################################
             # update best if current best better than stored
-            ################################################
             besto = evolver.get_best()
             if self._best is None or besto[1] < self._best[1]:
                 self._best = besto
@@ -302,16 +293,26 @@ class Experiment():
             ##################################
             # extract results: conv + spread
             #################################
-            front = evolver.get_best_front()
-            conv = evolver.avg_convergence()
-            conv_final = conv[-1]
+            front = evolver.get_best_front() # (fits1, fits2) (plot)
+            conv = evolver.avg_convergence() # avg per gen (plot)
+            conv_final = evolver.final_convergence() # final gen (dv)
 
-            self._fronts.append(front)
-            self._convs_in_time.append(conv)
-            self._avg_convs.append(conv_final)
-            print(f"- last population convergence: {round(conv_final, 2)}")
+            deltas = evolver.get_deltas()
+            delta_final = evolver.final_delta()
 
-            # adjusting checkpoint filename according to run
+            result = {
+                "front": front,
+                "conv": conv,
+                "conv_final": conv_final,
+                "deltas": deltas, 
+                "delta_final": delta_final
+            }
+
+            self._results.append(result)
+
+            ##################
+            # checkpoint !!!!
+            ###################
             checkpath = self._experiment_path/f"checkpoint_{e}.json"
             self._checkpoint(checkpath) #⛔️
             print(f"- hit checkpoint!")
@@ -321,6 +322,9 @@ class Experiment():
             # update seed for next run
             self._seed += 2
 
+        #############################################
+        # –––-----– runs are over ––––––---
+        #############################################
         bestpath = self._experiment_path/f"best.pth"
         if bestpath is not None:
             self._save_best(bestpath)

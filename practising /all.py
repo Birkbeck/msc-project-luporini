@@ -676,8 +676,8 @@ class NSGA2():
         #########################################
         ####### IF NOT PRESTEP: ################
         #########################################
-        # get the first front of the last generation
-        # ⛔️ in a normalised space !!! FOR PLOTTING!!!
+        # get the optimal front of the last generation
+        # ⛔️ in a normalised space !!! FOR PLOTTING 🔥
         # ⛔️ ASSUMPTION: updating self._population, self._fitnesses_1/2
         # during selection is done adding fronts in order!!!
         if not prestep and not bound_estimation:
