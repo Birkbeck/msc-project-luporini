@@ -191,7 +191,7 @@ class Experiment():
         
         if self._prestep:
             self._setup()
-            
+
             evolver = all.NSGA2(
                 pop_size=self._pop,
                 model=self._model2, # autoencoders!
@@ -316,6 +316,9 @@ class Experiment():
 
             self._results.append(result)
 
+            
+            self._run +=1
+            self._seed += 2
             ##################
             # checkpoint !!!!
             ###################
@@ -324,9 +327,7 @@ class Experiment():
             print(f"- hit checkpoint!")
 
 
-            self._run +=1
-            # update seed for next run
-            self._seed += 2
+            
 
         #############################################
         # –––-----– runs are over ––––––---
