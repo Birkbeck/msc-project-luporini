@@ -21,9 +21,9 @@ def flatten(model, device):
                             # BREAKS COMPUTATION GRAPH.. don't risk it
                             # might need autograd later
 
-def embed(model, biggest):
+def embed(model, biggest, device):
     device = next(model.parameters()).device
-    flat = flatten(model)
+    flat = flatten(model, device=device)
     mu = flat.mean().item()
 
     size = flat.numel()
@@ -198,18 +198,33 @@ def normalise_objective(fitnesses: list, bound):
     return normalised_fitnesses
 
 
-def group_fitness(pop:list, fn, bound_estimation:bool, bound:tuple)->list:
+# def group_fitness(pop:list, fn, bound_estimation:bool, bound:tuple)->list:
+#     """
+#     given a model pop and a fitness function, return fitness for each model
+#     - fitnesses are clamped between the given bound (empirical bounds!!!)
+#     """
+#     if bound_estimation:
+#        return [fn(i) for i in pop] 
+#     elif bound is not None:
+#         mino, maxo = bound
+#         return [  # min(fit, maxo) + max(fit, mino) # use generator inside!!
+#             max(min(fit, maxo), mino) for fit in (fn(i) for i in pop)
+#         ]
+#     elif bound is None:
+        
+
+def group_fitness(pop:list, fn, bound:tuple)->list:
     """
     given a model pop and a fitness function, return fitness for each model
     - fitnesses are clamped between the given bound (empirical bounds!!!)
     """
-    if bound_estimation:
-       return [fn(i) for i in pop] 
-    else:
-        mino, maxo = bound
-        return [  # min(fit, maxo) + max(fit, mino) # use generator inside!!
-            max(min(fit, maxo), mino) for fit in (fn(i) for i in pop)
-        ]
+    if bound is None:
+        return [fn(i) for i in pop] 
+    
+    mino, maxo = bound
+    return [  # min(fit, maxo) + max(fit, mino) # use generator inside!!
+        max(min(fit, maxo), mino) for fit in (fn(i) for i in pop)
+    ]
 
 
 def non_dominated_sorting(whole, fits1, fits2):
@@ -519,12 +534,12 @@ class NSGA2():
     def get_best_front(self):
         return self._best_front
 
-    def get_transfer_pop(self, model, freeze=False):
+    def get_transfer_pop(self, to_model, in_shape, classes, freeze=False):
         """should I just swap the new pop in??"""
         pop = []
         for m in self._population:
             weights = m.encoder.state_dict()
-            new = model(m, stride=m.get_stride()).to(self._device)
+            new = to_model(input_shape=in_shape, stride=m.get_stride(), classes=classes).to(self._device)
             new.encoder.load_state_dict(weights)
 
             if freeze:
@@ -551,6 +566,7 @@ class NSGA2():
     ):
         
         for gen in range(generations):
+            print(f" - gen {gen}")
 
             loader_sample = self._sample_loader(subset_fraction)
             fit_fn_1 = self._fit_fn_1(loader_sample, self._problem)
@@ -558,10 +574,10 @@ class NSGA2():
 
             
             self._fitnesses_1 = group_fitness( # clamped within emp_bounds
-                self._population, fit_fn_1, bound_estimation, self._emp_bounds_1
+                self._population, fit_fn_1, self._emp_bounds_1
             )
             self._fitnesses_2 = group_fitness( # clamped within emp_bounds
-                self._population, fit_fn_2, bound_estimation, self._emp_bounds_2
+                self._population, fit_fn_2, self._emp_bounds_2
             )
 
             ################################################
@@ -578,20 +594,23 @@ class NSGA2():
                     key1, key2 = random_keys[0], random_keys[1]
                     pool1, pool2 = self._islands[key1], self._islands[key2]
                     parent1, parent2 = random.choice(pool1), random.choice(pool2)
-                    parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
+                    parent1, parent2 = embed(parent1, self._biggest, self._device), embed(parent2, self._biggest, self._device)
                 else: # regular intraspecies crossover 🔥
                     key = random.choice(list(self._islands.keys()))
                     pool = self._islands[key]
                     if len(pool) == 1:
                         parent1, parent2 = pool[0], deepcopy(pool[0])
-                        parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
+                        parent1 = embed(parent1, self._biggest, self._device)
+                        parent2 = embed(parent2, self._biggest, self._device)
                     elif len(pool) == 2:
                         parent1, parent2 = pool[0], pool[1]
-                        parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
+                        parent1 = embed(parent1, self._biggest, self._device)
+                        parent2 = embed(parent2, self._biggest, self._device)
                     else:
                         parents = random.sample(pool, k=2)
                         parent1, parent2 = parents[0], parents[1]
-                        parent1, parent2 = embed(parent1, self._biggest), embed(parent2, self._biggest)
+                        parent1 = embed(parent1, self._biggest, self._device)
+                        parent2 = embed(parent2, self._biggest, self._device)
                 
                 self._check_biggest()
 
@@ -604,10 +623,10 @@ class NSGA2():
                                     # remodel(f,s,a,biggest)–>model!
             remodelled_children = [remodel(f, s, a, self._biggest) for f, s, a in children]
             children_fitnesses_1 = group_fitness(
-                remodelled_children, fit_fn_1, bound_estimation, self._emp_bounds_1
+                remodelled_children, fit_fn_1, self._emp_bounds_1
             )
             children_fitnesses_2 = group_fitness(
-                remodelled_children, fit_fn_2, bound_estimation, self._emp_bounds_2
+                remodelled_children, fit_fn_2, self._emp_bounds_2
             )
             all_solutions = self._population + remodelled_children
             all_fitnesses_1 = self._fitnesses_1 + children_fitnesses_1
@@ -671,7 +690,7 @@ class NSGA2():
                     self._estimate_spread(best_1, best_2) # Deb's ∆
 
 
-                    print(f"gen:{gen} | #topo:{len(self._islands)} | avg_conv: {avg_conv} | ∆: {self._spread[-1]}")
+                    print(f"gen:{gen} | #topo:{len(self._islands)} | avg_conv: {round(avg_conv, 3)} | ∆: {round(self._deltas[-1], 3)}")
 
         #########################################
         ####### IF NOT PRESTEP: ################
@@ -681,7 +700,7 @@ class NSGA2():
         # ⛔️ ASSUMPTION: updating self._population, self._fitnesses_1/2
         # during selection is done adding fronts in order!!!
         if not prestep and not bound_estimation:
-            self._best_front = list(best_1, best_2)
+            self._best_front = (best_1, best_2)
 
 
             

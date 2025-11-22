@@ -9,13 +9,16 @@ from architectures import TinyConvClassifier, TinyFlexyConvAE
 
 dataset = "mnist" # mnist, cifar, fashion
 problem = "classification"
-prestep = False # enable AE condition
-prestep_gens = None
+prestep, prestep_gens = True, 2 # enable AE condition
 
 model1 = TinyConvClassifier # main model
 model2 = TinyFlexyConvAE # autoencoder for AE condition
 
 interval = [1, 4]
+
+if prestep and prestep_gens is not None:
+    AE_pop = 10
+
 pop = 10
 evo_gens = 2
 bound_gens = 2
@@ -36,27 +39,31 @@ else:
 cwd = Path().cwd().resolve()
 basepath = cwd / "project" / "experiments" / f"{dataset}" / f"{condition}"
 
-
+print("\nstarting workflow..")
 workflow = exp.Experiment(
     model1=model1,
     model2=model2,
     pop=pop,
+    AEpop=AE_pop,
     dataset=dataset,
     problem=problem,
     evo_gens=evo_gens,
+    prestep=prestep, # autoencoder condition?
+    prestep_gens=prestep_gens,
+    mutation_strength=mutation_strength,
+    mutation_prob=mutation_probability,
     bound_gens=bound_gens,
     interval=interval,
     seed=seed,
     experiment_path=basepath,
     resume=resume, # from checkpoint?
-    prestep=prestep, # autoencoder condition?
     device=mydevice
 )
 
-workflow.run(
-    bound_estimation_runs=2, runs=2
-)
+workflow.run()
 
-results = workflow.get_results()
+print("experiment's over.. g'byeeee")
+
+# results = workflow.get_results()
         
 

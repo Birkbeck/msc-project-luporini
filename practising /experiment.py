@@ -1,6 +1,7 @@
 import random
 import json
 import os
+import subprocess
 import numpy as np
 import torch
 import all
@@ -17,15 +18,19 @@ class Experiment():
             pop,
             dataset,
             problem,
-
-            mutation_strength,
-            mutation_prob,
-            evo_gens,
-            bound_gens,
             interval,
             seed,
-
             experiment_path,
+
+            AEpop=None,
+            classes=10,
+            bound_runs=2,
+            bound_gens=2,
+            evo_runs=2,
+            evo_gens=2,
+            mutation_strength=0.3,
+            mutation_prob=0.2,
+            
             device=None,
             resume=False,
             prestep=False,
@@ -34,8 +39,10 @@ class Experiment():
         self._model1 = model1
         self._model2 = model2
         self._pop = pop
+        self._AEpop = AEpop
         self._autopop = None
         self._dataset = dataset.lower()
+        self._classes = classes
         self._interval = interval
         self._problem = problem
         self._prestep = prestep
@@ -44,8 +51,12 @@ class Experiment():
         self._mutation_s = mutation_strength
         self._mutation_p = mutation_prob
         self._prestep_gens = prestep_gens
-        self._evo_gens = evo_gens
+        
+        self._bound_runs = bound_runs
         self._bound_gens = bound_gens
+        self._evo_runs = evo_runs
+        self._evo_gens = evo_gens
+        self._exp_condition = "AE" if prestep else "noAE"
 
         self._resume = resume
         self._bound_estimation = False if self._resume else True
@@ -160,7 +171,7 @@ class Experiment():
     # –––––––– EXPERIMENTAL WORKFLOW –––––––––
     ###########################################
     ###########################################
-    def run(self, bound_estimation_runs=10, runs=30):
+    def run(self):
         # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
         # create appropriate directory if directory does not exists
         # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
@@ -183,7 +194,7 @@ class Experiment():
                 self._prestep = False
             
         else:
-            self._max_runs = runs
+            self._max_runs = self._evo_runs
         
         #############################################
         # –––––– if prestep, autoencoder !!! ––––––
@@ -193,7 +204,7 @@ class Experiment():
             self._setup()
 
             evolver = all.NSGA2(
-                pop_size=self._pop,
+                pop_size=self._AEpop,
                 model=self._model2, # autoencoders!
                 input_shape=self._input_shape,
                 interval=self._interval,
@@ -211,7 +222,7 @@ class Experiment():
             )
 
             print("evolved autoencoder population..")
-            self._autopop = evolver.get_transfer_pop()
+            self._autopop = evolver.get_transfer_pop(self._model1, self._input_shape, classes=self._classes)
             self._save_autopop(self._experiment_path / "autopop.pth")
 
             # self._checkpoint() # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
@@ -222,7 +233,8 @@ class Experiment():
         #############################################
         if self._bound_estimation:
             print("\n- estimating fitness bounds..")
-            for e in range(bound_estimation_runs):
+            for e in range(self._bound_runs):
+                print(f"round {e}")
                 self._set_seed()
                 self._setup()
 
@@ -247,6 +259,7 @@ class Experiment():
                     m_c=self._mutation_p
                 )
 
+
             bounds1 = evolver.get_bounds()[0]
             bounds2 = evolver.get_bounds()[1]
             self._bounds1 = bounds1
@@ -256,10 +269,9 @@ class Experiment():
         # –––– starting experimental runs –––––
         ########################################
         for e in range(self._run, self._max_runs):
-            suf = "st" if e==1 else "nd" if e==2 else "rd" if e==3 else "th" 
 
             # setting seed and preparing data
-            print(f"\n- beginning {e}{suf} run")
+            print(f"\n- beginning {e+1} run")
             self._set_seed()
             self._setup()
 
@@ -288,7 +300,7 @@ class Experiment():
                 m_c=self._mutation_p
             )
 
-            print(f"- {e}{suf} run finished")
+            print(f"- {e+1} run finished")
 
             # update best if current best better than stored
             besto = evolver.get_best()
@@ -298,7 +310,7 @@ class Experiment():
             ##################################
             # extract results: conv + spread
             #################################
-            front = evolver.get_best_front() # (fits1, fits2) (plot)
+            best_front = evolver.get_best_front() # (fits1, fits2) (plot)
             convergence = evolver.avg_convergence() # avg per gen (plot)
             f_convergence = evolver.final_convergence() # final gen (dv)
 
@@ -307,7 +319,7 @@ class Experiment():
 
 
             result = {
-                "front": front,
+                "front": best_front, # (fits1, fits2)
                 "conv": convergence,
                 "conv_final": f_convergence,
                 "deltas": deltas, 
@@ -322,13 +334,16 @@ class Experiment():
             ##################
             # checkpoint !!!!
             ###################
-            checkpath = self._experiment_path/f"checkpoint_{e}.json"
+            checkpath = self._experiment_path/f"checkpoint_{e+1}.json"
             self._checkpoint(checkpath) #⛔️
-            print(f"- hit checkpoint!")
+            print(f"- hit checkpoint! next run coming..")
 
-
-            
-
+            ##################
+            # git control !!!!
+            ###################
+            subprocess.run(["git", "add", "."])
+            subprocess.run(["git", "commit", "-m", f"finished run {e+1} for {self._dataset}_{self._exp_condition}"])
+            # subprocess.run(["git", "push"])
         #############################################
         # –––-----– runs are over ––––––---
         #############################################
@@ -341,3 +356,4 @@ class Experiment():
         bestpath = self._experiment_path/"best.pth"
         if bestpath is not None:
             self._save_best(bestpath)
+        
