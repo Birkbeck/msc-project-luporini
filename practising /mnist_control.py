@@ -39,7 +39,7 @@ else:
 cwd = Path().cwd().resolve()
 basepath = cwd / "project" / "experiments" / f"{dataset}" / f"{condition}"
 
-print("\nstarting workflow..")
+print("\nstarting workflow!")
 workflow = exp.Experiment(
     model1=model1,
     model2=model2,
@@ -62,7 +62,7 @@ workflow = exp.Experiment(
 
 workflow.run()
 
-print("experiment's over.. g'byeeee")
+print("\nexperiment's over.. g'byeeee")
 
 # results = workflow.get_results()
         

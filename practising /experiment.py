@@ -201,7 +201,7 @@ class Experiment():
         #############################################
         
         if self._prestep:
-            print("evolving autoencoders..")
+            print("\nevolving autoencoders..")
             self._setup()
 
             evolver = all.NSGA2(
@@ -222,7 +222,7 @@ class Experiment():
                 m_c=self._mutation_p
             )
 
-            print("autoencoders finished!")
+            print("autoencoder population has evolved..")
             self._autopop = evolver.get_transfer_pop(self._model1, self._input_shape, classes=self._classes)
             self._save_autopop(self._experiment_path / "autopop.pth")
 
@@ -269,10 +269,10 @@ class Experiment():
         ########################################
         # –––– starting experimental runs –––––
         ########################################
+        print("\nstarting experiment!")
         for e in range(self._run, self._max_runs):
 
             # setting seed and preparing data
-            print(f"\n- beginning {e+1} run")
             self._set_seed()
             self._setup()
 
@@ -292,7 +292,7 @@ class Experiment():
             evolver.set_bounds(b1=self._bounds1, b2=self._bounds2)
 
             # actual evolution !!!
-            print("- actual evolution..")
+            print(f"- beginning {e+1} run")
             evolver.evolve(
                 generations=self._evo_gens,
                 bound_estimation=False,
@@ -337,14 +337,15 @@ class Experiment():
             ###################
             checkpath = self._experiment_path/f"checkpoint_{e+1}.json"
             self._checkpoint(checkpath) #⛔️
-            print(f"- hit checkpoint! next run coming..")
+            print(f"\nhit checkpoint! next run coming..")
 
             ##################
             # git control !!!!
             ###################
+            print("\ngit!!!")
             subprocess.run(["git", "add", "."])
             subprocess.run(["git", "commit", "-m", f"finished run {e+1} for {self._dataset}_{self._exp_condition}"])
-            # subprocess.run(["git", "push"])
+            subprocess.run(["git", "push"]) # yep, you need it for colab
         #############################################
         # –––-----– runs are over ––––––---
         #############################################
