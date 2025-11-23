@@ -64,8 +64,8 @@ class Experiment():
 
         self._resume = resume
         self._bound_estimation = False if self._resume else True
-        self._bounds1 = None
-        self._bounds2 = None
+        self._bounds1 = []
+        self._bounds2 = []
 
         self._seed = seed
         self._experiment_path = experiment_path
@@ -264,11 +264,19 @@ class Experiment():
                     m_c=self._mutation_p
                 )
 
-
-            bounds1 = evolver.get_bounds()[0]
-            bounds2 = evolver.get_bounds()[1]
-            self._bounds1 = bounds1
-            self._bounds2 = bounds2
+                bounds1 = evolver.get_bounds()[0]
+                bounds2 = evolver.get_bounds()[1]
+                self._bounds1.append(bounds1)
+                self._bounds2.append(bounds2)
+            
+            # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
+            # and now you need a way to reduce those lists of tuples
+            # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
+            minmax1 = list(zip(*self._bounds1)) # [(min, min, ..), (max, max, ..)]
+            minmax2 = list(zip(*self._bounds2)) # [(min, min, ..), (max, max, ..)]
+            mino1, maxo1 = np.percentile(minmax1[0], 5), np.percentile(minmax1[1], 95)
+            mino2, maxo2 = np.percentile(minmax2[0], 5), np.percentile(minmax2[1], 95)
+            bounds1, bounds2 = (mino1, maxo1), (mino2, maxo2)
             print("- bounds have been estimated..")
         ########################################
         # –––– starting experimental runs –––––

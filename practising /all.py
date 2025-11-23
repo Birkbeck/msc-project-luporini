@@ -429,7 +429,7 @@ class NSGA2():
         )
         return loader
     
-    def _bounds_estimation(self, fitnesses):
+    def _bounds_estimation(self, fitnesses)->tuple:
         """update (or not) bounds"""
         mino = np.percentile(fitnesses, 5)
         maxo = np.percentile(fitnesses, 95)
