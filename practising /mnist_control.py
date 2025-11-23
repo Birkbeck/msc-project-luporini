@@ -22,8 +22,10 @@ else:
     AE_pop = None
 
 pop = 10
-evo_gens = 2
+bound_runs = 2
 bound_gens = 2
+evo_runs = 2
+evo_gens = 2
 mutation_strength = .3 
 mutation_probability = .1
 seed = 37
@@ -50,12 +52,14 @@ workflow = exp.Experiment(
     AEpop=AE_pop,
     dataset=dataset,
     problem=problem,
+    bound_runs=bound_runs,
+    bound_gens=bound_gens,
+    evo_runs=evo_runs,
     evo_gens=evo_gens,
     prestep=prestep, # autoencoder condition?
     prestep_gens=prestep_gens,
     mutation_strength=mutation_strength,
     mutation_prob=mutation_probability,
-    bound_gens=bound_gens,
     interval=interval,
     seed=seed,
     experiment_path=basepath,
