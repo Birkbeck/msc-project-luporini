@@ -276,7 +276,7 @@ class Experiment():
             minmax2 = list(zip(*self._bounds2)) # [(min, min, ..), (max, max, ..)]
             mino1, maxo1 = np.percentile(minmax1[0], 5), np.percentile(minmax1[1], 95)
             mino2, maxo2 = np.percentile(minmax2[0], 5), np.percentile(minmax2[1], 95)
-            bounds1, bounds2 = (mino1, maxo1), (mino2, maxo2)
+            self._bounds1, self._bounds2 = (mino1, maxo1), (mino2, maxo2)
             print("- bounds have been estimated..")
         ########################################
         # –––– starting experimental runs –––––

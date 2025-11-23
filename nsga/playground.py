@@ -20,10 +20,10 @@ else:
 
 pop = 10
 bound_runs = 3
-bound_gens = 10
+bound_gens = 3
 evo_runs = 2
-evo_gens = 2
-mutation_strength = .3 
+evo_gens = 3
+mutation_strength = .2 
 mutation_probability = .1
 seed = 37
 resume = False # from checkpoint?
