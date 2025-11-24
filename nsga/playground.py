@@ -5,6 +5,8 @@ import torch
 from models import TinyConvClassifier, TinyFlexyConvAE
 
 
+
+# –––––----- experiment details ––––––––––– #
 dataset = "mnist" # mnist, cifar, fashion
 problem = "classification"
 
@@ -25,7 +27,9 @@ bound_gens = 3
 evo_runs = 2
 evo_gens = 3
 mutation_strength = .2 
-mutation_probability = .1
+mutation_probability = .01 # stay between 0.1% - 1%
+mutation_mode = "light"
+
 seed = 37
 resume = False # from checkpoint?
 mydevice = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -54,7 +58,8 @@ print(os.getcwd())
 basepath = basedir / "tests" / f"{dataset}" / f"{condition}"
 
 
-# ----- initialise experiment ----- #
+
+# --–––---––– initialisation –––---–––-- #
 print("\nstarting workflow!")
 workflow = exp.Experiment(
     model1=model1,
@@ -71,6 +76,7 @@ workflow = exp.Experiment(
     prestep_gens=prestep_gens,
     mutation_strength=mutation_strength,
     mutation_prob=mutation_probability,
+    mutation_mode=mutation_mode,
     interval=interval,
     seed=seed,
     experiment_path=basepath,
@@ -80,7 +86,8 @@ workflow = exp.Experiment(
     checkpoint=checkpoint
 )
 
-# --- run experiment --- #
+
+# --––––- experiment --–––- #
 workflow.run()
 
 

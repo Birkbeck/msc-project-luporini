@@ -21,7 +21,7 @@ def crossover(parent1: tuple, parent2: tuple)-> tuple[torch.Tensor, torch.Tensor
     return child1, child2
 
 
-def mutate(guy:torch.Tensor, m_chance=0.2, m_rate=0.3, mode="small") -> torch.Tensor:
+def mutate(guy:torch.Tensor, mode, m_chance=0.2, m_rate=0.3) -> torch.Tensor:
     """
     randomly mutate parameters in a 1D tensor
 

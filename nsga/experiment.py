@@ -29,7 +29,8 @@ class Experiment():
             evo_runs=2,
             evo_gens=2,
             mutation_strength=0.3,
-            mutation_prob=0.2,
+            mutation_prob=0.01,
+            mutation_mode="light",
             
             checkpoint=True,
             device=None,
@@ -54,6 +55,7 @@ class Experiment():
 
         self._mutation_s = mutation_strength
         self._mutation_p = mutation_prob
+        self._m_mode = mutation_mode
         self._prestep_gens = prestep_gens
         
         self._bound_runs = bound_runs
@@ -223,7 +225,8 @@ class Experiment():
                 bound_estimation=False,
                 prestep=True,
                 m_r=self._mutation_s,
-                m_c=self._mutation_p
+                m_c=self._mutation_p,
+                m_mode=self._m_mode
             )
 
             print("autoencoder population has evolved..")
@@ -261,7 +264,8 @@ class Experiment():
                     bound_estimation=True,
                     prestep=False,
                     m_r=self._mutation_s,
-                    m_c=self._mutation_p
+                    m_c=self._mutation_p,
+                    m_mode=self._m_mode
                 )
 
                 bounds1 = evolver.get_bounds()[0]
@@ -310,7 +314,8 @@ class Experiment():
                 bound_estimation=False,
                 prestep=False,
                 m_r=self._mutation_s,
-                m_c=self._mutation_p
+                m_c=self._mutation_p,
+                m_mode=self._m_mode
             )
 
             print(f"- {e+1} run finished")
