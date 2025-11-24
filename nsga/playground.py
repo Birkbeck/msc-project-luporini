@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import experiment as exp
 import torch
@@ -28,7 +29,7 @@ mutation_probability = .1
 seed = 37
 resume = False # from checkpoint?
 mydevice = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-git = False
+git = True
 checkpoint = False
 
 if prestep:
@@ -36,9 +37,21 @@ if prestep:
 else:
     condition = "noAE"
 
-# from repo/nsga
+print(os.getcwd())
+# move to appropriate nsga directory
+name = "nsga"
+basedir = None
 cwd = Path().cwd().resolve()
-basepath = cwd / f"{dataset}" / f"{condition}"
+for e in cwd.rglob("*"):
+    if e.is_dir() and e.name == name:
+        basedir = e
+        break
+if basedir is None:
+    raise FileNotFoundError("could not find nsga directory")
+
+os.chdir(basedir)
+print(os.getcwd())
+basepath = basedir / "tests" / f"{dataset}" / f"{condition}"
 
 
 # ----- initialise experiment ----- #

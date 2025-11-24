@@ -353,7 +353,7 @@ class Experiment():
                 print(f"\nhit checkpoint! next run coming..")
 
             ##################
-            # git control !!!!
+            # git control ⛔️⛔️⛔️ careful, if NO CHECK–> NO CHANGES, nothing to commit!!!!
             ###################
             if self._git:
                 print("\ngit!!!")
