@@ -342,8 +342,6 @@ class NSGA2():
     ):
         
         for gen in range(generations):
-            if prestep:
-                print(f" - gen {gen}")
 
             loader_sample = self._sample_loader(subset_fraction)
             fit_fn_1 = self._fit_fn_1(loader_sample, self._problem)
@@ -446,13 +444,19 @@ class NSGA2():
             #############################################
             ####### IF NOT PRESTEP: bounds/ convergence 
             #############################################
-            if not prestep:
+            if prestep:
+                print(f"gen {gen}")
+            
+            else:
                 if bound_estimation:
+                    print(f"gen {gen}")
+
                     self._fitnesses_1_pool.extend(self._fitnesses_1)
                     self._fitnesses_2_pool.extend(self._fitnesses_2)
                     if gen == generations-1:
                         self._emp_bounds_1 = self._bounds_estimation(self._fitnesses_1_pool)
                         self._emp_bounds_2 = self._bounds_estimation(self._fitnesses_2_pool)
+                
                 else:
                     self._estimate_convergence()
                     avg_conv = sum(self._convergence[-1]) / len(self._convergence[-1])
