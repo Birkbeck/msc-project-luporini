@@ -273,7 +273,11 @@ class NSGA2():
         distances = [] # and record in self._convergence 
         for i in range(self._pop_size):
             distances.append(convergence(normalised_1[i], normalised_2[i]))
-        self._convergence.append(sum(distances)/len(distances))
+        
+        gen_avg = sum(distances)/len(distances)
+        self._convergence.append(gen_avg)
+
+        return gen_avg
 
 
     def _estimate_spread(self, fits1:list, fits2:list)->float:
@@ -506,13 +510,12 @@ class NSGA2():
                 
                 else:
                     # --------- convergence --------- #
-                    self._estimate_convergence()
-                    avg_conv = self._convergence[-1]
+                    avg_conv = self._estimate_convergence()
                     
-                    f1 = fronts[0] # last non-dominated front
-                    f1_length = len(f1)
                     
                     # ------------ spread ------------ #
+                    f1 = fronts[0] # last non-dominated front
+                    f1_length = len(f1)
                     f1_models = self._population[:f1_length]
                     f1_fitnesses_1 = self._fitnesses_1[:f1_length]
                     f1_fitnesses_2 = self._fitnesses_2[:f1_length]
@@ -543,7 +546,7 @@ class NSGA2():
                         f1_modval = list(zip(f1_models, f1_val_fitnesses, f1_fitnesses_1))
                         sorted_f1_modval = sorted(f1_modval, key=lambda x: x[1], reverse=True)
                         best_model = sorted_f1_modval[0] # tuple (model, val)
-                        if self._best_model is None or self._best_metrics is None:
+                        if self._best_model is None:
                             self._best_model = best_model #(model, val, fit)
                         else:
                             if self._best_model[1] < best_model[1]:
