@@ -537,7 +537,7 @@ class NSGA2():
                         
                         avg_val = sum(val_fitnesses) / len(val_fitnesses)
 
-                        self._val_fitnesses[0].append(avg_val)
+                        self._val_fitnesses.append(avg_val)
 
 
                         # extracting the best model (best val in first front)
