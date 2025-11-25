@@ -566,4 +566,4 @@ class NSGA2():
         # ⛔️ ASSUMPTION: updating self._population, self._fitnesses_1/2
         # during selection is done adding fronts in order!!!
         if not prestep and not bound_estimation:
-            self._best_front = (best_1, best_2)
+            self._best_front = (normalised_1, normalised_2)
