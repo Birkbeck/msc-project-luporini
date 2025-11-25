@@ -4,10 +4,50 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 
+# def model_fitness(data: DataLoader, problem="AE"):
+#     """
+#     returns a fitness function that computes 1/avg_loss = avg_fitness
+#     across batches given a model
+
+#     ⛔️ using non_blocking + pin_memory (DataLoader at the start of evolve):
+#     https://docs.pytorch.org/tutorials/intermediate/pinmem_nonblock.html
+
+#     Args:
+#         problem: either "regression", "classification" or default (AE).
+#     """
+#     if problem == "regression":
+#         loss_fn = nn.MSELoss()
+#         out = lambda X, y: y
+#     elif problem == "classification":
+#         loss_fn = nn.CrossEntropyLoss() # expect logits, y.shape((batch,))
+#         out = lambda X, y: y        # if working with encodings, will break!
+#     else:
+#         loss_fn = nn.MSELoss()
+#         out = lambda X, y: X
+    
+#     def fitness(model):
+#         device = next(model.parameters()).device
+#         model.eval()
+#         with torch.no_grad():
+#             tot_loss = 0
+#             for X, y in data:
+#                 X = X.to(device, non_blocking=True)
+#                 y = out(X, y).to(device, non_blocking=True)
+#                 pred = model(X)
+#                 loss = loss_fn(pred, y)
+#                 tot_loss += loss.item()   # ⛔️SPIKING FITNESS if avg_loss very small
+#             avg_loss = tot_loss / len(data) # enumerate starts from 0
+#             # avg_fitness = 1 / (avg_loss + 1e-8) # if avg_loss–>0, avg_fit–>inf!!
+#             avg_fitness = -avg_loss
+#         return avg_fitness
+    
+#     return fitness
+
 def model_fitness(data: DataLoader, problem="AE"):
     """
-    returns a fitness function that computes 1/avg_loss = avg_fitness
-    across batches given a model
+    returns model accuracy if problem == "classification" or
+    a fitness function that computes 1/avg_loss = avg_fitness 
+    across batches given a model if "AE or regression"
 
     ⛔️ using non_blocking + pin_memory (DataLoader at the start of evolve):
     https://docs.pytorch.org/tutorials/intermediate/pinmem_nonblock.html
@@ -30,19 +70,31 @@ def model_fitness(data: DataLoader, problem="AE"):
         model.eval()
         with torch.no_grad():
             tot_loss = 0
+            if problem == "classification":
+                correct = 0
+                tot = 0
             for X, y in data:
                 X = X.to(device, non_blocking=True)
                 y = out(X, y).to(device, non_blocking=True)
                 pred = model(X)
                 loss = loss_fn(pred, y)
                 tot_loss += loss.item()   # ⛔️SPIKING FITNESS if avg_loss very small
+                
+                if problem == "classification":
+                    y_pred_class = torch.argmax(pred, dim=1)
+                    correct += (y_pred_class == y).sum().item()
+                    tot += y.size(0)
+            
+            if problem == "classification":
+                return correct / tot
+        
             avg_loss = tot_loss / len(data) # enumerate starts from 0
             # avg_fitness = 1 / (avg_loss + 1e-8) # if avg_loss–>0, avg_fit–>inf!!
             avg_fitness = -avg_loss
+        
         return avg_fitness
     
     return fitness
-
 
 def model_runtime(data: DataLoader):
     """

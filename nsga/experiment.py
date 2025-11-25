@@ -82,14 +82,20 @@ class Experiment():
     def _setup(self):
         if self._dataset == "mnist":
             self._train = MNIST("./datasets", download=True, train=True, transform=transforms.ToTensor())
+            self._test = MNIST("./datasets", download=True, train=False, transform=transforms.ToTensor())
             self._input_shape = (1, 28, 28)
         elif self._dataset == "fashion":
             self._train = FashionMNIST("./datasets", download=True, train=True, transform=transforms.ToTensor())
+            self._test = FashionMNIST("./datasets", download=True, train=False, transform=transforms.ToTensor())
             self._input_shape = (1, 28, 28)
         else:
             self._train = CIFAR10("./datasets", download=True, train=True, transform=transforms.ToTensor())
+            self._test = CIFAR10("./datasets", download=True, train=False, transform=transforms.ToTensor())
             self._input_shape = (3, 32, 32)
+        
         self._train_loader = DataLoader(self._train, batch_size=30)
+        self._test_loader = DataLoader(self._test, batch_size=30)
+    
 
     def _set_seed(self, seed):
         random.seed(seed)
@@ -341,7 +347,7 @@ class Experiment():
             # convergence = evolver.avg_convergence() # avg per gen (plot)
             convergence = evolver.get_convergence() # avg per gen (plot)
             f_convergence = evolver.final_convergence() # final gen (dv)
-
+            val_fitnesses = evolver.get_val_fitnesses()
             deltas = evolver.get_deltas()
             f_delta = evolver.final_delta()
 
@@ -351,7 +357,8 @@ class Experiment():
                 "conv": convergence,
                 "conv_final": f_convergence,
                 "deltas": deltas, 
-                "delta_final": f_delta
+                "delta_final": f_delta,
+                "val_fitnesses": val_fitnesses
             }
 
             self._results.append(result)

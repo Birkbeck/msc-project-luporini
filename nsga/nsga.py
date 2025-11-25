@@ -164,11 +164,12 @@ class NSGA2():
         self._fit_fn_2 = model_runtime#(data)
         self._fitnesses_1 = None
         self._fitnesses_2 = None 
-        self._fitnesses_1_pool = []
-        self._fitnesses_2_pool = []
+        self._fitnesses_1_pool = [] # pool of fitnesses for bound estimation
+        self._fitnesses_2_pool = [] # pool of fitnesses for bound estimation
         
-        self._convergence = [] # list of mean pop_conv per generation
-        self._deltas = [] # list of ints: Deb's ∆ per generation
+        self._val_fitnesses = [] # list of avg. val fit per gen
+        self._convergence = [] # list of avg. pop_conv per gen
+        self._deltas = [] # list of Deb's ∆ per gen (ints)
         self._best_model = None
         self._best_convergence = None
         self._best_front = None
@@ -188,23 +189,36 @@ class NSGA2():
         if current_biggest != self._biggest:
             self._biggest = current_biggest
     
+
     def _initialise_fitness(self):
         self._fitness = group_fitness(self._population, self._fit_fn)
     
-    def _sample_loader(self, fraction):
+
+    def _trainval_loaders(self, fraction):
+        """
+        produces train and val loaders
+        val_loader_size < train_loader_size
+        """
         full_idxs = list(range(len(self._data)))
         if isinstance(self._data.targets, torch.Tensor):
             labels = self._data.targets.numpy()
         elif isinstance(self._data.targets, list):
             labels = np.array(self._data.targets)
             
-        random_indices, _ = train_test_split(full_idxs, train_size=fraction, stratify=labels)
-        subset = Subset(self._data, indices=random_indices)
+        train_indices, remaining = train_test_split(full_idxs, train_size=fraction, stratify=labels)
+        train_subset = Subset(self._data, indices=train_indices)
 
-        loader = DataLoader(
-            subset, batch_size=30, shuffle=True, pin_memory=True
+        val_indices, _ = train_test_split(remaining, train_size=0.5*fraction, stratify=True)
+        val_subset = Subset(self._data, indices=val_indices)
+
+
+        train_loader = DataLoader(
+            train_subset, batch_size=30, shuffle=True, pin_memory=True
         )
-        return loader
+        val_loader = DataLoader(
+            val_subset, batch_size=30, shuffle=True, pin_memory=True
+        )
+        return train_loader, val_loader
     
     def _bounds_estimation(self, fitnesses)->tuple:
         """update (or not) bounds"""
@@ -257,18 +271,7 @@ class NSGA2():
             distances.append(convergence(normalised_1[i], normalised_2[i]))
         self._convergence.append(sum(distances)/len(distances))
 
-        # finding most balanced model (closest to ideal)
-        zipped = list(zip(self._population, distances))
-        ordered = sorted(zipped, key= lambda x: x[1])
-        best_model, best_convergence = ordered[0]
-        if self._best_model is None or self._best_convergence is None:
-            self._best_model = deepcopy(best_model)
-            self._best_convergence = best_convergence
-        else:
-            if best_convergence < self._best_convergence:
-                self._best_model = deepcopy(best_model)
-                self._best_convergence = best_convergence
-    
+
     def _estimate_spread(self, fits1:list, fits2:list)->float:
         """
         ⛔️ fitnesses already normalised ⛔️
@@ -302,7 +305,6 @@ class NSGA2():
         self._fitnesses_2 = None
         self._convergence = [] # list of lists: normalised distances per generation
         self._best_model = None
-        self._best_convergence = None
         self._emp_bounds_1 = bound1 # empirical bounds per objective
         self._emp_bounds_2 = bound2
     
@@ -330,6 +332,9 @@ class NSGA2():
     
     def get_deltas(self):
         return self._deltas
+    
+    def get_val_fitness(self):
+        return self._val_fitnesses # [[val_fit_1], [val_fit_2]]
     
     def final_delta(self):
         return self._deltas[-1]
@@ -382,11 +387,11 @@ class NSGA2():
         
         for gen in range(generations):
 
-            loader_sample = self._sample_loader(subset_fraction)
-            fit_fn_1 = self._fit_fn_1(loader_sample, self._problem)
-            fit_fn_2 = self._fit_fn_2(loader_sample)
-
+            train_loader, val_loader = self._trainval_loaders(subset_fraction)
             
+            fit_fn_1 = self._fit_fn_1(train_loader, self._problem)
+            fit_fn_2 = self._fit_fn_2(train_loader)
+
             self._fitnesses_1 = group_fitness( # clamped within emp_bounds
                 self._population, fit_fn_1, self._emp_bounds_1
             )
@@ -480,9 +485,9 @@ class NSGA2():
             self._initialise_islands()
             self._check_biggest()
 
-            #############################################
-            ####### IF NOT PRESTEP: bounds/ convergence 
-            #############################################
+            ##################################################################
+            ####### IF NOT PRESTEP: bounds // convergence/spread // validation
+            #################################################################
             if prestep:
                 print(f"gen {gen}")
             
@@ -502,15 +507,44 @@ class NSGA2():
                     
                     f1 = fronts[0] # last non-dominated front
                     f1_length = len(f1)
+                    
+                    f1_models = self._population[:f1_length]
                     f1_fitnesses_1 = self._fitnesses_1[:f1_length]
                     f1_fitnesses_2 = self._fitnesses_2[:f1_length]
-                    best_1 = normalise_objective(f1_fitnesses_1, self._emp_bounds_1) 
-                    best_2 = normalise_objective(f1_fitnesses_2, self._emp_bounds_2)
                     
-                    self._estimate_spread(best_1, best_2) # Deb's ∆
+                    normalised_1 = normalise_objective(f1_fitnesses_1, self._emp_bounds_1) 
+                    normalised_2 = normalise_objective(f1_fitnesses_2, self._emp_bounds_2)
+                    
+                    self._estimate_spread(normalised_1, normalised_2) # Deb's ∆
 
 
-                    print(f"gen:{gen} | #topo:{len(self._islands)} | avg_conv: {round(avg_conv, 3)} | ∆: {round(self._deltas[-1], 3)}")
+                    # validation!!!
+                    if gen >= 4 and gen % 5 == 0:
+                        fit_fn_1 = self._fit_fn_1(val_loader, self._problem)
+                        fit_fn_2 = self._fit_fn_2(val_loader)
+
+                        val_fitnesses = group_fitness( # clamped within emp_bounds
+                            self._population, fit_fn_1, self._emp_bounds_1
+                        )
+                        
+                        avg_val = sum(val_fitnesses) / len(val_fitnesses)
+
+                        self._val_fitnesses[0].append(avg_val)
+
+
+                    # extracting the best model (best val in first front)
+                    f1_val_fitnesses = val_fitnesses[:f1_length]
+                    f1_modval = list(zip(f1_models, f1_val_fitnesses, f1_fitnesses_1))
+                    sorted_f1_modval = sorted(f1_modval, key=lambda x: x[1], reverse=True)
+                    best_model = sorted_f1_modval[0] # tuple (model, val)
+                    if self._best_model is None or self._best_metrics is None:
+                        self._best_model = best_model
+                    else:
+                        if self._best_model[1] < best_model[1]:
+                            self._best_model = best_model
+
+
+                    print(f"gen:{gen} | #topo:{len(self._islands)} | avg_val: {avg_val} | avg_conv: {round(avg_conv, 3)} | ∆: {round(self._deltas[-1], 3)}")
 
                     
                 if gen > 16 and gen % 3 == 0:
