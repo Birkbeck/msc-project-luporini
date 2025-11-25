@@ -22,10 +22,10 @@ else:
     AE_pop = None
 
 pop = 10
-bound_runs = 3
+bound_runs = 2
 bound_gens = 3
-evo_runs = 2
-evo_gens = 3
+evo_runs = 1
+evo_gens = 6
 mutation_rate = .1 # stay between 0.1% - 1%
 mutation_strength = .2 
 mutation_mode = "light"

@@ -203,12 +203,13 @@ class NSGA2():
         if isinstance(self._data.targets, torch.Tensor):
             labels = self._data.targets.numpy()
         elif isinstance(self._data.targets, list):
-            labels = np.array(self._data.targets)
+            labels = np.array(self._data.targets)  #need np.arrays for stratify
             
         train_indices, remaining = train_test_split(full_idxs, train_size=fraction, stratify=labels)
         train_subset = Subset(self._data, indices=train_indices)
 
-        val_indices, _ = train_test_split(remaining, train_size=0.5*fraction, stratify=True)
+        remaining_labels = labels[remaining]
+        val_indices, _ = train_test_split(remaining, train_size=0.5, stratify=remaining_labels)
         val_subset = Subset(self._data, indices=val_indices)
 
 
@@ -220,6 +221,7 @@ class NSGA2():
         )
         return train_loader, val_loader
     
+
     def _bounds_estimation(self, fitnesses)->tuple:
         """update (or not) bounds"""
         mino = np.percentile(fitnesses, 5)
@@ -238,18 +240,21 @@ class NSGA2():
         ⛔️ scaling constants???
         ⛔️ better to use proportional scaling??? close_avg / far_avg???
         """
-        # close_idx = close + 1
-        # far_idx = close_idx + far + 1
-        recent = self._convergence[-1:-6:-1] # pop_avgs last 5 gens
-        distant = self._convergence[-6:-17:-1] # pop_avgs previous 10 gens
-        recent_avg = sum(recent) / len(recent) # avg conv over recent gens
-        distant_avg = sum(distant) / len(distant) # avg conv over distant gens
+        # define helper function
+        def avg_close_far(fit):
+            recent = fit[-1:-6:-1] # pop_avgs last 5 gens
+            distant = fit[-6:-17:-1] # pop_avgs previous 10 gens
+            recent_avg = sum(recent) / len(recent) # avg conv over recent gens
+            distant_avg = sum(distant) / len(distant)
+            return  recent_avg, distant_avg
         
-        # GETTING BETTER (smaller avg.distance from ideal)?
-        # close_avg < far_avg = scaling_f < 1 = new_rate < m_c
-        # GETTING WORSE (bigger avg.distance form ideal)?
-        # close_avg > far_avg = scaling_f > 1 = new_rate > m_c
-        new_rate = m_c * (recent_avg / distant_avg)
+        c_close, c_far = avg_close_far(self._convergence)
+        c_factor = c_close / c_far # scale down if conv getting smaller
+
+        v_close, v_far = avg_close_far(self._val_fitnesses)
+        v_factor = v_far / v_close # scale down if val getting bigger (better generalisation)
+
+        new_rate = m_c * c_factor * v_factor
         
         new_rate = max(min(new_rate, 0.2), 0.01)
         
@@ -502,12 +507,14 @@ class NSGA2():
                         self._emp_bounds_2 = self._bounds_estimation(self._fitnesses_2_pool)
                 
                 else:
+                    # --------- convergence --------- #
                     self._estimate_convergence()
                     avg_conv = self._convergence[-1]
                     
                     f1 = fronts[0] # last non-dominated front
                     f1_length = len(f1)
                     
+                    # ------------ spread ------------ #
                     f1_models = self._population[:f1_length]
                     f1_fitnesses_1 = self._fitnesses_1[:f1_length]
                     f1_fitnesses_2 = self._fitnesses_2[:f1_length]
@@ -518,8 +525,8 @@ class NSGA2():
                     self._estimate_spread(normalised_1, normalised_2) # Deb's ∆
 
 
-                    # validation!!!
-                    if gen >= 4 and gen % 5 == 0:
+                    # ---------- validation ---------- #
+                    if gen >= 4 and gen % 3 == 0:
                         fit_fn_1 = self._fit_fn_1(val_loader, self._problem)
                         fit_fn_2 = self._fit_fn_2(val_loader)
 
@@ -532,21 +539,23 @@ class NSGA2():
                         self._val_fitnesses[0].append(avg_val)
 
 
-                    # extracting the best model (best val in first front)
-                    f1_val_fitnesses = val_fitnesses[:f1_length]
-                    f1_modval = list(zip(f1_models, f1_val_fitnesses, f1_fitnesses_1))
-                    sorted_f1_modval = sorted(f1_modval, key=lambda x: x[1], reverse=True)
-                    best_model = sorted_f1_modval[0] # tuple (model, val)
-                    if self._best_model is None or self._best_metrics is None:
-                        self._best_model = best_model
-                    else:
-                        if self._best_model[1] < best_model[1]:
+                        # extracting the best model (best val in first front)
+                        f1_val_fitnesses = val_fitnesses[:f1_length]
+                        f1_modval = list(zip(f1_models, f1_val_fitnesses, f1_fitnesses_1))
+                        sorted_f1_modval = sorted(f1_modval, key=lambda x: x[1], reverse=True)
+                        best_model = sorted_f1_modval[0] # tuple (model, val)
+                        if self._best_model is None or self._best_metrics is None:
                             self._best_model = best_model
+                        else:
+                            if self._best_model[1] < best_model[1]:
+                                self._best_model = best_model
 
+                    if avg_val:
+                        print(f"gen:{gen} | #topo:{len(self._islands)} | avg_val: {avg_val} | avg_conv: {round(avg_conv, 3)} | ∆: {round(self._deltas[-1], 3)}")
+                    else:
+                        print(f"gen:{gen} | #topo:{len(self._islands)} | avg_val: {"non_comp"} | avg_conv: {round(avg_conv, 3)} | ∆: {round(self._deltas[-1], 3)}")
+                
 
-                    print(f"gen:{gen} | #topo:{len(self._islands)} | avg_val: {avg_val} | avg_conv: {round(avg_conv, 3)} | ∆: {round(self._deltas[-1], 3)}")
-
-                    
                 if gen > 16 and gen % 3 == 0:
                     m_r = self._update_m_rate(m_r)
         #########################################

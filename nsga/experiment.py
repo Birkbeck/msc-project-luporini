@@ -254,7 +254,7 @@ class Experiment():
             print("\n- estimating fitness bounds..")
             for e in range(self._bound_runs):
                 print(f"round {e}")
-                seed = self._seed()
+                seed = self._seed
                 self._set_seed(seed)
                 self._setup()
 
@@ -304,7 +304,7 @@ class Experiment():
 
             # setting seed and preparing data
             seed = self._current_seed if self._resume else self._seed
-            self._set_seed()
+            self._set_seed(seed)
             self._setup()
 
             evolver = nsga.NSGA2(
