@@ -57,6 +57,7 @@ os.chdir(basedir)
 print(os.getcwd())
 basepath = basedir / "tests" / f"{dataset}" / f"{condition}"
 
+basepath.mkdir(parents=True, exist_ok=True)
 
 
 # --–––---––– initialisation –––---–––-- #
