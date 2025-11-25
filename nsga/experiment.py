@@ -79,8 +79,7 @@ class Experiment():
         self._best = None
         self._results = [{"dataset": self._dataset, # list of dictionaries 
                           "pop_size": self._pop, # first one, basic info
-                          "interval": self._interval
-                          ""}] # then, one per gen
+                          "interval": self._interval}] # then, one per gen
 
     def _setup(self):
         if self._dataset == "mnist":
