@@ -362,9 +362,16 @@ class Experiment():
             ###################
             if self._git:
                 print("\ngit!!!")
-                subprocess.run(["git", "add", "."])
-                subprocess.run(["git", "commit", "-m", f"finished run {e+1} for {self._dataset}_{self._exp_condition}"])
-                subprocess.run(["git", "push"]) # yep, you need it for colab
+                actions = [
+                    ["git", "add", "."],
+                    ["git", "commit", "-m", f"finished run {e+1} for {self._dataset}_{self._exp_condition}"],
+                    ["git", "push"] # yep, you need it for colab
+                ]
+                for a in actions:
+                    try:
+                        subprocess.run(a, check=True)
+                    except subprocess.CalledProcessError as e:
+                        print(f"git action failed: {a}. Exception: {e}")
         #############################################
         # –––-----– runs are over ––––––---
         #############################################
