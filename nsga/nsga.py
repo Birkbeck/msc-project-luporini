@@ -171,7 +171,6 @@ class NSGA2():
         self._convergence = [] # list of avg. pop_conv per gen
         self._deltas = [] # list of Deb's ∆ per gen (ints)
         self._best_model = None
-        self._best_convergence = None
         self._best_front = None
 
     
@@ -345,13 +344,12 @@ class NSGA2():
         return self._deltas[-1]
 
     def get_best(self):
-        best = self._best_model, self._best_convergence
+        best = self._best_model #(model, val, fit)
         return best
     
     def save_best(self, filepath):
         best = {
-            "weights": self._best_model.state_dict(),
-            "convergence": self._best_convergence
+            "weights": self._best_model.state_dict()
         }
         torch.save(best, filepath)
     
@@ -546,7 +544,7 @@ class NSGA2():
                         sorted_f1_modval = sorted(f1_modval, key=lambda x: x[1], reverse=True)
                         best_model = sorted_f1_modval[0] # tuple (model, val)
                         if self._best_model is None or self._best_metrics is None:
-                            self._best_model = best_model
+                            self._best_model = best_model #(model, val, fit)
                         else:
                             if self._best_model[1] < best_model[1]:
                                 self._best_model = best_model

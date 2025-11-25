@@ -155,12 +155,15 @@ class Experiment():
 
 
     def _save_best(self, path):
-        model, conv = self._best
+        model = self._best[0] #(model, val, fit)
         stride = model.get_stride()
+        val = self._best[1]
+        fit = self._best[2]
         torch.save({
             "weights": model.state_dict(),
-            "convergence": conv,
-            "stride": stride
+            "stride": stride,
+            "val": val,
+            "fit": fit
         }, path)
 
     def _load_best(self, path):
@@ -338,7 +341,7 @@ class Experiment():
             print(f"- {e+1} run finished")
 
             # update best if current best better than stored
-            besto = evolver.get_best()
+            besto = evolver.get_best() #(model, val, fit)
             if self._best is None or besto[1] < self._best[1]:
                 self._best = besto
 
@@ -349,7 +352,7 @@ class Experiment():
             # convergence = evolver.avg_convergence() # avg per gen (plot)
             convergence = evolver.get_convergence() # avg per gen (plot)
             f_convergence = evolver.final_convergence() # final gen (dv)
-            val_fitnesses = evolver.get_val_fitnesses()
+            val_fitnesses = evolver.get_val_fitness()
             deltas = evolver.get_deltas()
             f_delta = evolver.final_delta()
 
