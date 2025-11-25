@@ -7,9 +7,6 @@ from models import TinyConvClassifier, TinyFlexyConvAE
 
 
 # –––––----- experiment details ––––––––––– #
-dataset = "mnist" # mnist, cifar, fashion
-problem = "classification"
-
 model1 = TinyConvClassifier # main model
 model2 = TinyFlexyConvAE # autoencoder for AE condition
 
@@ -36,10 +33,16 @@ mydevice = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 git = False
 checkpoint = False
 
-if prestep:
+dataset = "mnist" # mnist, cifar, fashion
+problem = "classification"
+simple = True
+if simple:
+    condition = "simple" # simple evolution trials.. no exp. concerns
+elif prestep:
     condition = "AE"
 else:
     condition = "noAE"
+
 
 print(os.getcwd())
 # move to appropriate nsga directory

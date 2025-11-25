@@ -77,7 +77,10 @@ class Experiment():
         self._max_runs = None
 
         self._best = None
-        self._results = [] # list of dictionaries per run
+        self._results = [{"dataset": self._dataset, # list of dictionaries 
+                          "pop_size": self._pop, # first one, basic info
+                          "interval": self._interval
+                          ""}] # then, one per gen
 
     def _setup(self):
         if self._dataset == "mnist":
@@ -358,7 +361,8 @@ class Experiment():
                 "conv_final": f_convergence,
                 "deltas": deltas, 
                 "delta_final": f_delta,
-                "val_fitnesses": val_fitnesses
+                "val_fitnesses": val_fitnesses,
+                "empirical_bounds": [self._bounds1, self._bounds2]
             }
 
             self._results.append(result)

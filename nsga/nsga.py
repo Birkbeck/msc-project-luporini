@@ -526,6 +526,7 @@ class NSGA2():
 
 
                     # ---------- validation ---------- #
+                    avg_val = None
                     if gen >= 4 and gen % 3 == 0:
                         fit_fn_1 = self._fit_fn_1(val_loader, self._problem)
                         fit_fn_2 = self._fit_fn_2(val_loader)
@@ -550,7 +551,7 @@ class NSGA2():
                             if self._best_model[1] < best_model[1]:
                                 self._best_model = best_model
 
-                    if avg_val:
+                    if avg_val is not None:
                         print(f"gen:{gen} | #topo:{len(self._islands)} | avg_val: {avg_val} | avg_conv: {round(avg_conv, 3)} | ∆: {round(self._deltas[-1], 3)}")
                     else:
                         print(f"gen:{gen} | #topo:{len(self._islands)} | avg_val: {"non_comp"} | avg_conv: {round(avg_conv, 3)} | ∆: {round(self._deltas[-1], 3)}")
