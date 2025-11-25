@@ -70,6 +70,7 @@ class Experiment():
         self._bounds2 = []
 
         self._seed = seed
+        self._current_seed = None
         self._experiment_path = experiment_path
 
         self._run = 0
@@ -90,10 +91,10 @@ class Experiment():
             self._input_shape = (3, 32, 32)
         self._train_loader = DataLoader(self._train, batch_size=30)
 
-    def _set_seed(self):
-        random.seed(self._seed)
-        np.random.seed(self._seed)
-        torch.manual_seed(self._seed)
+    def _set_seed(self, seed):
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
     
     def _checkpoint(self, filepath):
         with open(filepath, "w") as f:
@@ -103,7 +104,8 @@ class Experiment():
                 "bounds2": self._bounds2,
                 "run": self._run,
                 "seed": self._seed,
-                "max_runs": self._max_runs
+                "max_runs": self._max_runs,
+                "current_seed": self._current_seed
             }, f)
     
     def _load_checkpoint(self, checkpath):
@@ -117,6 +119,7 @@ class Experiment():
         self._run = data["run"]
         self._seed = data["seed"]
         self._max_runs = data["max_runs"]
+        self._current_seed = data["current_seed"]
 
     def _save_autopop(self, path): # for autopop!!!! ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
         d = dict()
@@ -208,6 +211,8 @@ class Experiment():
         
         if self._prestep:
             print("\nevolving autoencoders..")
+            seed = self._seed
+            self._set_seed(seed)
             self._setup()
 
             evolver = nsga.NSGA2(
@@ -243,7 +248,8 @@ class Experiment():
             print("\n- estimating fitness bounds..")
             for e in range(self._bound_runs):
                 print(f"round {e}")
-                self._set_seed()
+                seed = self._seed()
+                self._set_seed(seed)
                 self._setup()
 
                 evolver = nsga.NSGA2(
@@ -272,6 +278,8 @@ class Experiment():
                 bounds2 = evolver.get_bounds()[1]
                 self._bounds1.append(bounds1)
                 self._bounds2.append(bounds2)
+
+                seed+=1
             
             # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
             # and now you need a way to reduce those lists of tuples
@@ -289,6 +297,7 @@ class Experiment():
         for e in range(self._run, self._max_runs):
 
             # setting seed and preparing data
+            seed = self._current_seed if self._resume else self._seed
             self._set_seed()
             self._setup()
 
@@ -349,11 +358,12 @@ class Experiment():
 
             
             self._run +=1
-            self._seed += 2
+            seed += 2
             ##################
             # checkpoint !!!!
             ###################
             if self._check:
+                self._current_seed = seed
                 checkpath = self._experiment_path/f"checkpoint_{e+1}.json"
                 self._checkpoint(checkpath) #⛔️
                 print(f"\nhit checkpoint! next run coming..")
