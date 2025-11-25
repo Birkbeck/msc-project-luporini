@@ -29,7 +29,7 @@ class Experiment():
             evo_runs=2,
             evo_gens=2,
             mutation_strength=0.3,
-            mutation_prob=0.01,
+            mutation_rate=0.1,
             mutation_mode="light",
             
             checkpoint=True,
@@ -54,7 +54,7 @@ class Experiment():
         self._check = checkpoint
 
         self._mutation_s = mutation_strength
-        self._mutation_p = mutation_prob
+        self._mutation_r = mutation_rate
         self._m_mode = mutation_mode
         self._prestep_gens = prestep_gens
         
@@ -103,7 +103,7 @@ class Experiment():
                 "bounds2": self._bounds2,
                 "run": self._run,
                 "seed": self._seed,
-                "max_runs": self._max_runs,
+                "max_runs": self._max_runs
             }, f)
     
     def _load_checkpoint(self, checkpath):
@@ -224,8 +224,8 @@ class Experiment():
                 generations=self._prestep_gens,
                 bound_estimation=False,
                 prestep=True,
-                m_r=self._mutation_s,
-                m_c=self._mutation_p,
+                m_r=self._mutation_r,
+                m_s=self._mutation_s,
                 m_mode=self._m_mode
             )
 
@@ -263,8 +263,8 @@ class Experiment():
                     generations=self._bound_gens,
                     bound_estimation=True,
                     prestep=False,
-                    m_r=self._mutation_s,
-                    m_c=self._mutation_p,
+                    m_r=self._mutation_r,
+                    m_s=self._mutation_s,
                     m_mode=self._m_mode
                 )
 
@@ -313,8 +313,8 @@ class Experiment():
                 generations=self._evo_gens,
                 bound_estimation=False,
                 prestep=False,
-                m_r=self._mutation_s,
-                m_c=self._mutation_p,
+                m_r=self._mutation_r,
+                m_s=self._mutation_s,
                 m_mode=self._m_mode
             )
 
@@ -329,7 +329,8 @@ class Experiment():
             # extract results: conv + spread
             #################################
             best_front = evolver.get_best_front() # (fits1, fits2) (plot)
-            convergence = evolver.avg_convergence() # avg per gen (plot)
+            # convergence = evolver.avg_convergence() # avg per gen (plot)
+            convergence = evolver.get_convergence() # avg per gen (plot)
             f_convergence = evolver.final_convergence() # final gen (dv)
 
             deltas = evolver.get_deltas()

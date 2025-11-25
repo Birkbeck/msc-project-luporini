@@ -21,15 +21,15 @@ def crossover(parent1: tuple, parent2: tuple)-> tuple[torch.Tensor, torch.Tensor
     return child1, child2
 
 
-def mutate(guy:torch.Tensor, mode, m_chance=0.2, m_rate=0.3) -> torch.Tensor:
+def mutate(guy:torch.Tensor, mode, m_rate=0.1, m_strength=0.3) -> torch.Tensor:
     """
     randomly mutate parameters in a 1D tensor
 
     args:
         guy: flat tensor
-        m_chance: chance of mutation in "small" mode - mutatate if rand below m_chance
         mode: either "50/50", where half of the genes mutate on avg. or else, where #mutation depends on m_chance
-        m_rate: scaling factor for mutation strength
+        m_rate: chance of mutation in "small" mode - mutatate if rand below m_chance
+        m_strength: scaling factor for mutation strength
     """
     device = guy.device
     if mode == "50/50":
@@ -39,7 +39,7 @@ def mutate(guy:torch.Tensor, mode, m_chance=0.2, m_rate=0.3) -> torch.Tensor:
         mutation = m_rate * mask * strength
         #⛔️half of the genes mutated on avg!!! AGGRESSIVE?
     else:
-        mask = torch.rand_like(guy, device=device) < m_chance
+        mask = torch.rand_like(guy, device=device) < m_rate
         strength = torch.randn_like(guy, device=device)
         mutation = m_rate * mask * strength
     

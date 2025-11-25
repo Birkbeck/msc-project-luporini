@@ -26,14 +26,14 @@ bound_runs = 3
 bound_gens = 3
 evo_runs = 2
 evo_gens = 3
+mutation_rate = .1 # stay between 0.1% - 1%
 mutation_strength = .2 
-mutation_probability = .01 # stay between 0.1% - 1%
 mutation_mode = "light"
 
 seed = 37
 resume = False # from checkpoint?
 mydevice = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-git = True
+git = False
 checkpoint = False
 
 if prestep:
@@ -75,8 +75,8 @@ workflow = exp.Experiment(
     evo_gens=evo_gens,
     prestep=prestep, # autoencoder condition?
     prestep_gens=prestep_gens,
+    mutation_rate=mutation_rate,
     mutation_strength=mutation_strength,
-    mutation_prob=mutation_probability,
     mutation_mode=mutation_mode,
     interval=interval,
     seed=seed,

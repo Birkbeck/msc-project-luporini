@@ -167,7 +167,7 @@ class NSGA2():
         self._fitnesses_1_pool = []
         self._fitnesses_2_pool = []
         
-        self._convergence = [] # list of lists: normalised distances per generation
+        self._convergence = [] # list of mean pop_conv per generation
         self._deltas = [] # list of ints: Deb's ∆ per generation
         self._best_model = None
         self._best_convergence = None
@@ -212,6 +212,36 @@ class NSGA2():
         maxo = np.percentile(fitnesses, 95)
         return mino, maxo
     
+    def _update_m_rate(self, m_c): #close:int, far:int): # close=3, far=10
+        """ 
+        updating m_chance based on how recent generations
+        are doing compared to more distant generations
+
+        args:
+            - close: recent generations for closer window
+            - far: distant generations for farther windon
+        
+        ⛔️ scaling constants???
+        ⛔️ better to use proportional scaling??? close_avg / far_avg???
+        """
+        # close_idx = close + 1
+        # far_idx = close_idx + far + 1
+        recent = self._convergence[-1:-6:-1] # pop_avgs last 5 gens
+        distant = self._convergence[-6:-17:-1] # pop_avgs previous 10 gens
+        recent_avg = sum(recent) / len(recent) # avg conv over recent gens
+        distant_avg = sum(distant) / len(distant) # avg conv over distant gens
+        
+        # GETTING BETTER (smaller avg.distance from ideal)?
+        # close_avg < far_avg = scaling_f < 1 = new_rate < m_c
+        # GETTING WORSE (bigger avg.distance form ideal)?
+        # close_avg > far_avg = scaling_f > 1 = new_rate > m_c
+        new_rate = m_c * (recent_avg / distant_avg)
+        
+        new_rate = max(min(new_rate, 0.2), 0.01)
+        
+        return new_rate
+        
+    
     def _estimate_convergence(self):
         """
         given the current population,
@@ -225,7 +255,7 @@ class NSGA2():
         distances = [] # and record in self._convergence 
         for i in range(self._pop_size):
             distances.append(convergence(normalised_1[i], normalised_2[i]))
-        self._convergence.append(distances)
+        self._convergence.append(sum(distances)/len(distances))
 
         # finding most balanced model (closest to ideal)
         zipped = list(zip(self._population, distances))
@@ -283,12 +313,20 @@ class NSGA2():
         self._emp_bounds_1 = b1
         self._emp_bounds_2 = b2
     
-    def avg_convergence(self):
-        """returns list of avg.pop distance from ideal point per generation"""
-        return [sum(i)/len(i) for i in self._convergence]
+    # def avg_convergence(self):
+    #     """returns list of avg.pop distance from ideal point per generation"""
+    #     return [sum(i)/len(i) for i in self._convergence]
+
+    # ⛔️ variation of self.avg_convergence() based on new self._convergence ⛔️
+    def get_convergence(self):
+        return self._convergence
     
+    # def final_convergence(self):
+    #     return self.avg_convergence()[-1]
+
+    # ⛔️ variation of self.avg_convergence() based on new self._convergence ⛔️
     def final_convergence(self):
-        return self.avg_convergence()[-1]
+        return self._convergence[-1]
     
     def get_deltas(self):
         return self._deltas
@@ -337,8 +375,8 @@ class NSGA2():
             bound_estimation=True,
             generations=0,
             subset_fraction=0.07,
-            m_c=0.01,
-            m_r=0.3,
+            m_r=0.1,
+            m_s=0.3,
             m_mode="small"
     ):
         
@@ -391,8 +429,8 @@ class NSGA2():
                 self._check_biggest()
 
                 child1, child2 = crossover(parent1, parent2)
-                child1 = (mutate(child1[0], m_mode, m_chance=m_c, m_rate=m_r), child1[1], child1[2]) 
-                child2 = (mutate(child2[0], m_mode, m_chance=m_c, m_rate=m_r), child2[1], child2[2]) 
+                child1 = (mutate(child1[0], m_mode, m_rate=m_r, m_strength=m_s), child1[1], child1[2]) 
+                child2 = (mutate(child2[0], m_mode, m_rate=m_r, m_strength=m_s), child2[1], child2[2]) 
                 
                 children.extend([child1, child2])
 
@@ -460,7 +498,7 @@ class NSGA2():
                 
                 else:
                     self._estimate_convergence()
-                    avg_conv = sum(self._convergence[-1]) / len(self._convergence[-1])
+                    avg_conv = self._convergence[-1]
                     
                     f1 = fronts[0] # last non-dominated front
                     f1_length = len(f1)
@@ -474,6 +512,9 @@ class NSGA2():
 
                     print(f"gen:{gen} | #topo:{len(self._islands)} | avg_conv: {round(avg_conv, 3)} | ∆: {round(self._deltas[-1], 3)}")
 
+                    
+                if gen > 16 and gen % 3 == 0:
+                    m_r = self._update_m_rate(m_r)
         #########################################
         ####### IF NOT PRESTEP: ################
         #########################################
