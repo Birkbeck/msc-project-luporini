@@ -20,9 +20,9 @@ else:
 
 pop = 10
 bound_runs = 2
-bound_gens = 3
+bound_gens = 2
 evo_runs = 1
-evo_gens = 7
+evo_gens = 19
 mutation_rate = .1 # stay between 0.1% - 1%
 mutation_strength = .2 
 mutation_mode = "light"
@@ -57,6 +57,7 @@ if cwd.name != name:
 else:
     basedir = cwd
 
+print(os.getcwd())
 basepath = basedir / "tests" / f"{dataset}" / f"{condition}"
 
 basepath.mkdir(parents=True, exist_ok=True)

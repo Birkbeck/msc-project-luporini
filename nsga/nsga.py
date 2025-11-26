@@ -240,18 +240,25 @@ class NSGA2():
         ⛔️ better to use proportional scaling??? close_avg / far_avg???
         """
         # define helper function
-        def avg_close_far(fit):
-            recent = fit[-1:-6:-1] # pop_avgs last 5 gens
-            distant = fit[-6:-17:-1] # pop_avgs previous 10 gens
-            recent_avg = sum(recent) / len(recent) # avg conv over recent gens
-            distant_avg = sum(distant) / len(distant)
+        def avg_close_far(fit, what):
+            if what == "convergence":
+                recent = fit[-1:-6:-1] if len(fit) >= 5 else fit[:] # pop_avgs last 5 gens
+                distant = fit[-6:-17:-1] if len(fit) >= 15 else fit[:-len(recent)] # pop_avgs previous 10 gens
+                
+            else: # avg_validations are collected every 3 generations!!!!
+                recent = fit[-1:-3] # last two avg_val
+                distant = fit[-3:-8:-1] if len(fit) >= 5 else [] # previous  avg_vals
+            
+            recent_avg = sum(recent) / len(recent) if recent else 1.0 # avg conv over recent gens
+            distant_avg = sum(distant) / len(distant) if distant else 1.0
             return  recent_avg, distant_avg
-        
-        c_close, c_far = avg_close_far(self._convergence)
-        c_factor = c_close / c_far # scale down if conv getting smaller
 
-        v_close, v_far = avg_close_far(self._val_fitnesses)
-        v_factor = v_far / v_close # scale down if val getting bigger (better generalisation)
+        
+        c_close, c_far = avg_close_far(self._convergence, "convergence")
+        c_factor = c_close / c_far if c_far != 0 else 1.0 # scale down if conv getting smaller
+
+        v_close, v_far = avg_close_far(self._val_fitnesses, "validation")
+        v_factor = v_far / v_close if v_close != 0 else 1.0 # scale down if val getting bigger (better generalisation)
 
         new_rate = m_c * c_factor * v_factor
         
@@ -528,7 +535,7 @@ class NSGA2():
 
                     # ---------- validation ---------- #
                     avg_val = None
-                    if gen >= 4 and gen % 3 == 0:
+                    if gen >= 4 and gen % 2 == 0:
                         fit_fn_1 = self._fit_fn_1(val_loader, self._problem)
                         fit_fn_2 = self._fit_fn_2(val_loader)
 
@@ -558,7 +565,7 @@ class NSGA2():
                         print(f"gen:{gen} | #topo:{len(self._islands)} | avg_val: {"non_comp"} | avg_conv: {round(avg_conv, 3)} | ∆: {round(self._deltas[-1], 3)}")
                 
 
-                if gen > 16 and gen % 3 == 0:
+                if gen >= 16 and gen % 3 == 0:
                     m_r = self._update_m_rate(m_r)
         #########################################
         ####### IF NOT PRESTEP: ################
