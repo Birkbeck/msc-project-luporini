@@ -18,12 +18,13 @@ if prestep and prestep_gens is not None:
 else:
     AE_pop = None
 
-pop = 10
+pop = 15
 bound_runs = 2
 bound_gens = 2
 evo_runs = 1
 evo_gens = 19
-mutation_rate = .1 # stay between 0.1% - 1%
+interspecies_r = 0.1 
+mutation_rate = .78 # stay between 0.1% - 1%
 mutation_strength = .2 
 mutation_mode = "light"
 
@@ -78,6 +79,7 @@ workflow = exp.Experiment(
     evo_gens=evo_gens,
     prestep=prestep, # autoencoder condition?
     prestep_gens=prestep_gens,
+    intersp_cross_rate=interspecies_r,
     mutation_rate=mutation_rate,
     mutation_strength=mutation_strength,
     mutation_mode=mutation_mode,

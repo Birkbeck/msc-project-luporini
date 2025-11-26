@@ -242,8 +242,8 @@ class NSGA2():
         # define helper function
         def avg_close_far(fit, what):
             if what == "convergence":
-                recent = fit[-5:] if len(fit) >= 5 else fit[:] # pop_avgs last 5 gens
-                distant = fit[-10:-5] if len(fit) >= 10 else fit[:-len(recent)] # pop_avgs previous 5 gens
+                recent = fit[-2:] if len(fit) >= 5 else fit[:] # pop_avgs last 2 gens
+                distant = fit[-5:-2] if len(fit) >= 10 else fit[:-len(recent)] # pop_avgs previous 3 gens
                 
             else: # avg_validations are collected every 3 generations!!!!
                 recent = fit[-2:] if len(fit) >= 2 else fit[:] # last two avg_val
@@ -315,13 +315,13 @@ class NSGA2():
             self._deltas.append(float("nan")) # ⁉️
 
         
-    def _clear_attributes(self, bound1, bound2):
-        self._fitnesses_1 = None
-        self._fitnesses_2 = None
-        self._convergence = [] # list of lists: normalised distances per generation
-        self._best_model = None
-        self._emp_bounds_1 = bound1 # empirical bounds per objective
-        self._emp_bounds_2 = bound2
+    # def _clear_attributes(self, bound1, bound2):
+    #     self._fitnesses_1 = None
+    #     self._fitnesses_2 = None
+    #     self._convergence = [] # list of lists: normalised distances per generation
+    #     self._best_model = None
+    #     self._emp_bounds_1 = bound1 # empirical bounds per objective
+    #     self._emp_bounds_2 = bound2
     
     def get_bounds(self):
         return self._emp_bounds_1, self._emp_bounds_2
@@ -330,29 +330,19 @@ class NSGA2():
         self._emp_bounds_1 = b1
         self._emp_bounds_2 = b2
     
-    # def avg_convergence(self):
-    #     """returns list of avg.pop distance from ideal point per generation"""
-    #     return [sum(i)/len(i) for i in self._convergence]
 
-    # ⛔️ variation of self.avg_convergence() based on new self._convergence ⛔️
+    # get the list of avg convergence per gen
     def get_convergence(self):
         return self._convergence
     
-    # def final_convergence(self):
-    #     return self.avg_convergence()[-1]
-
-    # ⛔️ variation of self.avg_convergence() based on new self._convergence ⛔️
-    def final_convergence(self):
-        return self._convergence[-1]
-    
+    # get the list of delta per gen
     def get_deltas(self):
         return self._deltas
     
+    # get the list of avg val performance per gen
     def get_val_fitness(self):
-        return self._val_fitnesses # [[val_fit_1], [val_fit_2]]
+        return self._val_fitnesses
     
-    def final_delta(self):
-        return self._deltas[-1]
 
     def get_best(self):
         best = self._best_model #(model, val, fit)
@@ -394,6 +384,7 @@ class NSGA2():
             bound_estimation=True,
             generations=0,
             subset_fraction=0.07,
+            inter_r=0.01,
             m_r=0.1,
             m_s=0.3,
             m_mode="small"
@@ -421,13 +412,15 @@ class NSGA2():
             # mating events, either within(more likely) or between(less likely)
             children = [] # TOURNAMENT 🔥
             self._check_biggest()
+            interspecies = 0
             for _ in range(self._pop_size//2):
-                if random.random() < 0.1 and len(self._islands)>= 2: # unlikely cross-species crossover 🔥
+                if random.random() < inter_r and len(self._islands)>= 2: # unlikely cross-species crossover 🔥
                     random_keys = random.sample(list(self._islands.keys()), k=2)
                     key1, key2 = random_keys[0], random_keys[1]
                     pool1, pool2 = self._islands[key1], self._islands[key2]
                     parent1, parent2 = random.choice(pool1), random.choice(pool2)
                     parent1, parent2 = embed(parent1, self._biggest, self._device), embed(parent2, self._biggest, self._device)
+                    interspecies += 1
                 else: # regular intraspecies crossover 🔥
                     key = random.choice(list(self._islands.keys()))
                     pool = self._islands[key]
@@ -445,6 +438,7 @@ class NSGA2():
                         parent1 = embed(parent1, self._biggest, self._device)
                         parent2 = embed(parent2, self._biggest, self._device)
                 
+                
                 self._check_biggest()
 
                 child1, child2 = crossover(parent1, parent2)
@@ -452,6 +446,7 @@ class NSGA2():
                 child2 = (mutate(child2[0], m_mode, m_rate=m_r, m_strength=m_s), child2[1], child2[2]) 
                 
                 children.extend([child1, child2])
+
 
                                     # remodel(f,s,a,biggest)–>model!
             remodelled_children = [remodel(f, s, a, self._biggest) for f, s, a in children]
@@ -539,7 +534,7 @@ class NSGA2():
                         fit_fn_1 = self._fit_fn_1(val_loader, self._problem)
                         fit_fn_2 = self._fit_fn_2(val_loader)
 
-                        val_fitnesses = group_fitness( # clamped within emp_bounds
+                        val_fitnesses = group_fitness( # within emp_bounds
                             self._population, fit_fn_1, self._emp_bounds_1
                         )
                         
@@ -560,12 +555,12 @@ class NSGA2():
                                 self._best_model = best_model
 
                     if avg_val is not None:
-                        print(f"gen:{gen} | #topo:{len(self._islands)} | avg_val: {avg_val} | avg_conv: {round(avg_conv, 3)} | ∆: {round(self._deltas[-1], 3)}")
+                        print(f"gen:{gen}|cross-species: {interspecies}|#topo:{len(self._islands)}|avg_val: {round(avg_val, 3)}|avg_conv: {round(avg_conv, 3)}| ∆: {round(self._deltas[-1], 3)}")
                     else:
-                        print(f"gen:{gen} | #topo:{len(self._islands)} | avg_val: {"non_comp"} | avg_conv: {round(avg_conv, 3)} | ∆: {round(self._deltas[-1], 3)}")
+                        print(f"gen:{gen}|cross-species: {interspecies}|#topo:{len(self._islands)}|avg_val: {"non_comp"}|avg_conv: {round(avg_conv, 3)}|∆: {round(self._deltas[-1], 3)}")
                 
 
-                if gen >= 10 and gen % 3 == 0:
+                if gen >= 6 and gen % 3 == 0:
                     m_r = self._update_m_rate(m_r)
         #########################################
         ####### IF NOT PRESTEP: ################

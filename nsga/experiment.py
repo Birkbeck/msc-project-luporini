@@ -28,6 +28,7 @@ class Experiment():
             bound_gens=2,
             evo_runs=2,
             evo_gens=2,
+            intersp_cross_rate=0.01,
             mutation_strength=0.3,
             mutation_rate=0.1,
             mutation_mode="light",
@@ -53,6 +54,7 @@ class Experiment():
         self._git = git
         self._check = checkpoint
 
+        self._inter_r = intersp_cross_rate
         self._mutation_s = mutation_strength
         self._mutation_r = mutation_rate
         self._m_mode = mutation_mode
@@ -240,6 +242,7 @@ class Experiment():
                 generations=self._prestep_gens,
                 bound_estimation=False,
                 prestep=True,
+                inter_r=self._inter_r,
                 m_r=self._mutation_r,
                 m_s=self._mutation_s,
                 m_mode=self._m_mode
@@ -280,6 +283,7 @@ class Experiment():
                     generations=self._bound_gens,
                     bound_estimation=True,
                     prestep=False,
+                    inter_r=self._inter_r,
                     m_r=self._mutation_r,
                     m_s=self._mutation_s,
                     m_mode=self._m_mode
@@ -333,6 +337,7 @@ class Experiment():
                 generations=self._evo_gens,
                 bound_estimation=False,
                 prestep=False,
+                inter_r=self._inter_r,
                 m_r=self._mutation_r,
                 m_s=self._mutation_s,
                 m_mode=self._m_mode
@@ -351,10 +356,10 @@ class Experiment():
             best_front = evolver.get_best_front() # (fits1, fits2) (plot)
             # convergence = evolver.avg_convergence() # avg per gen (plot)
             convergence = evolver.get_convergence() # avg per gen (plot)
-            f_convergence = evolver.final_convergence() # final gen (dv)
+            f_convergence = convergence[-1] # final gen (dv)
             val_fitnesses = evolver.get_val_fitness()
             deltas = evolver.get_deltas()
-            f_delta = evolver.final_delta()
+            f_delta = deltas[-1]
 
 
             result = {
