@@ -262,7 +262,7 @@ class NSGA2():
 
         new_rate = m_c * c_factor * v_factor
         
-        new_rate = max(min(new_rate, 0.2), 0.01)
+        new_rate = max(min(new_rate, 0.4), 0.01)
         
         return new_rate
         
