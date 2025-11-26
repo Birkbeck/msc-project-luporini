@@ -242,12 +242,12 @@ class NSGA2():
         # define helper function
         def avg_close_far(fit, what):
             if what == "convergence":
-                recent = fit[-1:-6:-1] if len(fit) >= 5 else fit[:] # pop_avgs last 5 gens
-                distant = fit[-6:-17:-1] if len(fit) >= 15 else fit[:-len(recent)] # pop_avgs previous 10 gens
+                recent = fit[-5:] if len(fit) >= 5 else fit[:] # pop_avgs last 5 gens
+                distant = fit[-10:-5] if len(fit) >= 10 else fit[:-len(recent)] # pop_avgs previous 5 gens
                 
             else: # avg_validations are collected every 3 generations!!!!
-                recent = fit[-1:-3] # last two avg_val
-                distant = fit[-3:-8:-1] if len(fit) >= 5 else [] # previous  avg_vals
+                recent = fit[-2:] if len(fit) >= 2 else fit[:] # last two avg_val
+                distant = fit[-6:-2] if len(fit) >= 6 else fit[:-len(recent)] # previous 4 avg_vals
             
             recent_avg = sum(recent) / len(recent) if recent else 1.0 # avg conv over recent gens
             distant_avg = sum(distant) / len(distant) if distant else 1.0
@@ -565,7 +565,7 @@ class NSGA2():
                         print(f"gen:{gen} | #topo:{len(self._islands)} | avg_val: {"non_comp"} | avg_conv: {round(avg_conv, 3)} | ∆: {round(self._deltas[-1], 3)}")
                 
 
-                if gen >= 16 and gen % 3 == 0:
+                if gen >= 10 and gen % 3 == 0:
                     m_r = self._update_m_rate(m_r)
         #########################################
         ####### IF NOT PRESTEP: ################
