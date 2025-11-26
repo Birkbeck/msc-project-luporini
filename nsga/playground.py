@@ -49,15 +49,14 @@ print(os.getcwd())
 name = "nsga"
 basedir = None
 cwd = Path().cwd().resolve()
-for e in cwd.rglob("*"):
-    if e.is_dir() and e.name == name:
-        basedir = e
-        break
-if basedir is None:
-    raise FileNotFoundError("could not find nsga directory")
+if cwd.name != name:
+    try:
+        basedir = next(e for e in cwd.rglob("*") if e.is_dir() and e.name == name)
+    except StopIteration:
+        raise FileNotFoundError("could not find nsga directory")
+else:
+    basedir = cwd
 
-os.chdir(basedir)
-print(os.getcwd())
 basepath = basedir / "tests" / f"{dataset}" / f"{condition}"
 
 basepath.mkdir(parents=True, exist_ok=True)
