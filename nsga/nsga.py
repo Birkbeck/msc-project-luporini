@@ -529,35 +529,35 @@ class NSGA2():
 
 
                     # ---------- validation ---------- #
-                    avg_val = None
-                    if gen >= 4 and gen % 2 == 0:
-                        fit_fn_1 = self._fit_fn_1(val_loader, self._problem)
-                        fit_fn_2 = self._fit_fn_2(val_loader)
+                    # avg_val = None
+                    # if gen >= 4 and gen % 2 == 0:
+                    fit_fn_1 = self._fit_fn_1(val_loader, self._problem)
+                    fit_fn_2 = self._fit_fn_2(val_loader)
 
-                        val_fitnesses = group_fitness( # within emp_bounds
-                            self._population, fit_fn_1, self._emp_bounds_1
-                        )
+                    val_fitnesses = group_fitness( # within emp_bounds
+                        self._population, fit_fn_1, self._emp_bounds_1
+                    )
                         
-                        avg_val = sum(val_fitnesses) / len(val_fitnesses)
+                    avg_val = sum(val_fitnesses) / len(val_fitnesses)
 
-                        self._val_fitnesses.append(avg_val)
+                    self._val_fitnesses.append(avg_val)
 
 
-                        # extracting the best model (best val in first front)
-                        f1_val_fitnesses = val_fitnesses[:f1_length]
-                        f1_modval = list(zip(f1_models, f1_val_fitnesses, f1_fitnesses_1))
-                        sorted_f1_modval = sorted(f1_modval, key=lambda x: x[1], reverse=True)
-                        best_model = sorted_f1_modval[0] # tuple (model, val)
-                        if self._best_model is None:
-                            self._best_model = best_model #(model, val, fit)
-                        else:
-                            if self._best_model[1] < best_model[1]:
-                                self._best_model = best_model
-
-                    if avg_val is not None:
-                        print(f"gen:{gen}|cross-species: {interspecies}|#topo:{len(self._islands)}|avg_val: {round(avg_val, 3)}|avg_conv: {round(avg_conv, 3)}| ∆: {round(self._deltas[-1], 3)}")
+                    # extracting the best model (best val in first front)
+                    f1_val_fitnesses = val_fitnesses[:f1_length]
+                    f1_modval = list(zip(f1_models, f1_val_fitnesses, f1_fitnesses_1))
+                    sorted_f1_modval = sorted(f1_modval, key=lambda x: x[1], reverse=True)
+                    best_model = sorted_f1_modval[0] # tuple (model, val)
+                    if self._best_model is None:
+                        self._best_model = best_model #(model, val, fit)
                     else:
-                        print(f"gen:{gen}|cross-species: {interspecies}|#topo:{len(self._islands)}|avg_val: {"non_comp"}|avg_conv: {round(avg_conv, 3)}|∆: {round(self._deltas[-1], 3)}")
+                        if self._best_model[1] < best_model[1]:
+                            self._best_model = best_model
+
+                    # if avg_val is not None:
+                    print(f"gen:{gen}|cross-species: {interspecies}|#topo:{len(self._islands)}|avg_val: {round(avg_val, 3)}|avg_conv: {round(avg_conv, 3)}| ∆: {round(self._deltas[-1], 3)}")
+                    # else:
+                    #     print(f"gen:{gen}|cross-species: {interspecies}|#topo:{len(self._islands)}|avg_val: {"non_comp"}|avg_conv: {round(avg_conv, 3)}|∆: {round(self._deltas[-1], 3)}")
                 
 
                 if gen >= 6 and gen % 3 == 0:
