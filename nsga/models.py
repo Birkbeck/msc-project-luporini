@@ -118,13 +118,21 @@ class TinyConvClassifier(nn.Module):
         return output
     
 
-def create_AE_pop(size, shape, epochs, interval, data, noise=0.4, device=torch.device("cuda") if torch.cuda.is_available() else "cpu"):
-    model = TinyFlexyConvAE
+def create_AE_pop(
+        model,
+        size,
+        shape,
+        epochs,
+        interval,
+        data,
+        noise=0.4,
+        device=torch.device("cuda") if torch.cuda.is_available() else "cpu"
+):
     loss_fn = nn.MSELoss()
 
     pop = []
     for m in range(size):
-        print(f"{m} model")
+        print(f"* {m} model")
         auto = model(
             input_shape=shape,
             stride=random.randint(interval[0], interval[1])
@@ -133,7 +141,7 @@ def create_AE_pop(size, shape, epochs, interval, data, noise=0.4, device=torch.d
         optimiser = torch.optim.Adam(auto.parameters(), lr=0.01)
         auto.train()
         for e in range(epochs):
-            print(f"{e} epoch")
+            print(f"  - {e} epoch")
             for X, _ in data:
                 optimiser.zero_grad()
                 X_noisy = X + noise * torch.randn_like(X)

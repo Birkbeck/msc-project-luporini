@@ -12,17 +12,11 @@ model2 = TinyFlexyConvAE # autoencoder for AE condition
 
 interval = [1, 4]
 
-prestep, prestep_gens = False, 0 # enable AE condition
-if prestep and prestep_gens is not None:
-    AE_pop = 10
-else:
-    AE_pop = None
-
-pop = 15
+pop = 10
 bound_runs = 2
 bound_gens = 2
 evo_runs = 1
-evo_gens = 19
+evo_gens = 5
 interspecies_r = 0.1 
 mutation_rate = .78 # stay between 0.1% - 1%
 mutation_strength = .2 
@@ -36,10 +30,10 @@ checkpoint = False
 
 dataset = "mnist" # mnist, cifar, fashion
 problem = "classification"
-simple = True
-if simple:
-    condition = "simple" # simple evolution trials.. no exp. concerns
-elif prestep:
+
+# enable AE condition?
+prestep = True 
+if prestep:
     condition = "AE"
 else:
     condition = "noAE"
@@ -66,11 +60,10 @@ basepath.mkdir(parents=True, exist_ok=True)
 
 # --–––---––– initialisation –––---–––-- #
 print("\nstarting workflow!")
-workflow = exp.Experiment(
+workflow = exp.ExperimentV2(
     model1=model1,
     model2=model2,
     pop=pop,
-    AEpop=AE_pop,
     dataset=dataset,
     problem=problem,
     bound_runs=bound_runs,
@@ -78,7 +71,6 @@ workflow = exp.Experiment(
     evo_runs=evo_runs,
     evo_gens=evo_gens,
     prestep=prestep, # autoencoder condition?
-    prestep_gens=prestep_gens,
     intersp_cross_rate=interspecies_r,
     mutation_rate=mutation_rate,
     mutation_strength=mutation_strength,

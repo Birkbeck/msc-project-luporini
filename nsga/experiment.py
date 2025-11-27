@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import nsga
 
+from models import create_AE_pop
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST, FashionMNIST, CIFAR10
@@ -22,7 +23,6 @@ class Experiment():
             seed,
             experiment_path,
 
-            AEpop=None,
             classes=10,
             bound_runs=2,
             bound_gens=2,
@@ -43,7 +43,6 @@ class Experiment():
         self._model1 = model1
         self._model2 = model2
         self._pop = pop
-        self._AEpop = AEpop
         self._autopop = None
         self._dataset = dataset.lower()
         self._classes = classes
@@ -229,7 +228,7 @@ class Experiment():
             self._setup()
 
             evolver = nsga.NSGA2(
-                pop_size=self._AEpop,
+                pop_size=self._pop,
                 model=self._model2, # autoencoders!
                 input_shape=self._input_shape,
                 interval=self._interval,
@@ -429,7 +428,8 @@ class ExperimentV2():
             seed,
             experiment_path,
 
-            AEpop=None,
+            prestep=False,
+            AEepochs=4,
             classes=10,
             bound_runs=2,
             bound_gens=2,
@@ -443,15 +443,13 @@ class ExperimentV2():
             checkpoint=True,
             device=None,
             resume=False,
-            prestep=False,
-            prestep_gens=0,
             git=False
     ):
         self._model1 = model1
         self._model2 = model2
         self._pop = pop
-        self._AEpop = AEpop
         self._autopop = None
+        self._AEepochs = AEepochs
         self._dataset = dataset.lower()
         self._classes = classes
         self._interval = interval
@@ -465,7 +463,6 @@ class ExperimentV2():
         self._mutation_s = mutation_strength
         self._mutation_r = mutation_rate
         self._m_mode = mutation_mode
-        self._prestep_gens = prestep_gens
         
         self._bound_runs = bound_runs
         self._bound_gens = bound_gens
@@ -630,16 +627,24 @@ class ExperimentV2():
         #############################################
         
         if self._prestep:
-            print("\nevolving autoencoders..")
+            print("\ncreating autoencoders..")
             seed = self._seed
             self._set_seed(seed)
             self._setup()
 
-            self._create_AE_pop
+            self._autopop = create_AE_pop(
+                self._model2,
+                self._pop,
+                self._input_shape,
+                self._AEepochs,
+                self._interval,
+                self._train_loader,
+                noise=0.4,
+                device=self._device
+            )
 
-            print("autoencoder population has evolved..")
-            self._autopop = evolver.get_transfer_pop(self._model1, self._input_shape, classes=self._classes)
-            self._save_autopop(self._experiment_path / "autopop.pth")
+            print("\nautoencoder population was created..")
+            # self._save_autopop(self._experiment_path / "autopop.pth") # need to save ⁉️
 
             # self._checkpoint() # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
         #############################################
