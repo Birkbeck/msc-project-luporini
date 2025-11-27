@@ -51,6 +51,7 @@ def remodel(embedded, original_size, model, biggest):
 
 
 # HELPER FUNCTIONS for evaluation convergence and spread⛔️
+########################################################################
 def convergence(p1, p2):
     """for a model: Euclidean distance from ideal s in nD"""
     return math.sqrt((p1 - 1)**2 + (p2 - 1)**2)
@@ -61,3 +62,4 @@ def euclidean(point1:tuple, point2:tuple)->float:
     x1, y1 = point1
     x2, y2 = point2
     return math.sqrt((x1-x2)**2 + (y1-y2)**2)
+########################################################################
