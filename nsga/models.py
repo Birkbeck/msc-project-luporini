@@ -128,6 +128,9 @@ def create_AE_pop(
         noise=0.4,
         device=torch.device("cuda") if torch.cuda.is_available() else "cpu"
 ):
+    """
+    ⛔️ could train on subset?! less compute?!
+    """
     loss_fn = nn.MSELoss()
 
     pop = []

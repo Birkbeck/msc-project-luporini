@@ -12,10 +12,10 @@ model2 = TinyFlexyConvAE # autoencoder for AE condition
 
 interval = [1, 4]
 
-pop = 10
+pop = 3
 bound_runs = 2
 bound_gens = 2
-evo_runs = 1
+evo_runs = 1 # 'experiment' runs
 evo_gens = 5
 interspecies_r = 0.1 
 mutation_rate = .78 # stay between 0.1% - 1%
@@ -60,7 +60,7 @@ basepath.mkdir(parents=True, exist_ok=True)
 
 # --–––---––– initialisation –––---–––-- #
 print("\nstarting workflow!")
-workflow = exp.ExperimentV2(
+workflow = exp.ExperimentV3(
     model1=model1,
     model2=model2,
     pop=pop,
