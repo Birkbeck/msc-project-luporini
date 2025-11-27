@@ -808,7 +808,7 @@ from torchvision.datasets import MNIST, FashionMNIST, CIFAR10
 #         if bestpath is not None:
 #             self._save_best(bestpath)
         
-
+import sys
 
 class ExperimentV3():
     def __init__(
@@ -865,7 +865,6 @@ class ExperimentV3():
         self._exp_condition = "AE" if prestep else "noAE"
 
         self._resume = resume
-        self._bound_estimation = False if self._resume else True
         self._bounds1 = []
         self._bounds2 = []
 
@@ -995,9 +994,12 @@ class ExperimentV3():
                 self._load_autopop(autopath)
                 self._prestep = False
             
+            # print(self._seed)
+            # sys.exit()
+
         else:
             self._max_runs = self._evo_runs
-        
+
 
         self._setup()
         #############################################
@@ -1010,7 +1012,7 @@ class ExperimentV3():
             self._set_seed(seed)
             
             if self._prestep:
-                print("* creating autoencoders..")
+                print("\n* creating autoencoders..")
 
                 autopop = create_AE_pop( # instead of storing in self._autopop
                     self._model2,
@@ -1031,42 +1033,41 @@ class ExperimentV3():
             #############################################
             #############################################
             b1, b2 = [], []
-            if self._bound_estimation:
-                print("* estimating fitness bounds..")
-                boundseed = self._current_seed + 100 if self._resume else self._seed + 100
-                for boundrun in range(self._bound_runs):
-                    print(f"  - bounds estimation round {boundrun}")
-                    self._set_seed(boundseed)
+            print("\n* estimating fitness bounds..")
+            boundseed = self._current_seed + 100 if self._resume else self._seed + 100
+            for boundrun in range(self._bound_runs):
+                print(f"  - bounds estimation round {boundrun}")
+                self._set_seed(boundseed)
 
-                    evolver = nsga.NSGA2(
-                        pop_size=self._pop,
-                        model=self._model1,
-                        input_shape=self._input_shape,
-                        interval=self._interval,
-                        data=self._train,
-                        problem=self._problem,
-                        device=self._device
-                    )
+                evolver = nsga.NSGA2(
+                    pop_size=self._pop,
+                    model=self._model1,
+                    input_shape=self._input_shape,
+                    interval=self._interval,
+                    data=self._train,
+                    problem=self._problem,
+                    device=self._device
+                )
 
-                    if self._prestep:
-                        evolver.transfer_popV2(autopop, self._model1, self._input_shape, self._classes) # ⛔️
+                if self._prestep:
+                    evolver.transfer_popV2(autopop, self._model1, self._input_shape, self._classes) # ⛔️
 
-                    evolver.evolve(
-                        generations=self._bound_gens,
-                        bound_estimation=True,
-                        prestep=False,
-                        inter_r=self._inter_r,
-                        m_r=self._mutation_r,
-                        m_s=self._mutation_s,
-                        m_mode=self._m_mode
-                    )
+                evolver.evolve(
+                    generations=self._bound_gens,
+                    bound_estimation=True,
+                    prestep=False,
+                    inter_r=self._inter_r,
+                    m_r=self._mutation_r,
+                    m_s=self._mutation_s,
+                    m_mode=self._m_mode
+                )
 
-                    bound1 = evolver.get_bounds()[0] # (min, max) from one evo
-                    bound2 = evolver.get_bounds()[1] # # (min, max) from one evo
-                    b1.append(bound1) # [(min, max), (min, max), (min, max), ..]
-                    b2.append(bound2)
-                    
-                    boundseed += 1
+                bound1 = evolver.get_bounds()[0] # (min, max) from one evo
+                bound2 = evolver.get_bounds()[1] # # (min, max) from one evo
+                b1.append(bound1) # [(min, max), (min, max), (min, max), ..]
+                b2.append(bound2)
+                
+                boundseed += 1
                 
             # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
             # and now you need a way to reduce those lists of tuples
@@ -1076,7 +1077,7 @@ class ExperimentV3():
             mino1, maxo1 = np.percentile(minmax1[0], 5), np.percentile(minmax1[1], 95)
             mino2, maxo2 = np.percentile(minmax2[0], 5), np.percentile(minmax2[1], 95)
             self._bounds1, self._bounds2 = (mino1, maxo1), (mino2, maxo2)
-            print("\n  - bounds have been estimated..")
+            print("  - bounds have been estimated..")
             ########################################
             # –––– starting experimental runs –––––
             ########################################
@@ -1097,7 +1098,7 @@ class ExperimentV3():
             evolver.set_bounds(b1=self._bounds1, b2=self._bounds2)
 
             # actual evolution !!!
-            print(f"* model evolution..")
+            print(f"\n* model evolution..")
             evolver.evolve(
                 generations=self._evo_gens,
                 bound_estimation=False,

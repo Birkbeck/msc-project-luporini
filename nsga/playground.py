@@ -12,10 +12,10 @@ model2 = TinyFlexyConvAE # autoencoder for AE condition
 
 interval = [1, 4]
 
-pop = 3
+pop = 5
 bound_runs = 2
 bound_gens = 2
-evo_runs = 1 # 'experiment' runs
+evo_runs = 3 # 'experiment' runs
 evo_gens = 5
 interspecies_r = 0.1 
 mutation_rate = .78 # stay between 0.1% - 1%
@@ -23,16 +23,16 @@ mutation_strength = .2
 mutation_mode = "light"
 
 seed = 37
-resume = False # from checkpoint?
+resume = True # from checkpoint?
 mydevice = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 git = False
-checkpoint = False
+checkpoint = True
 
 dataset = "mnist" # mnist, cifar, fashion
 problem = "classification"
 
 # enable AE condition?
-prestep = True 
+prestep = False 
 if prestep:
     condition = "AE"
 else:
