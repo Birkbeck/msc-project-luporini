@@ -143,8 +143,9 @@ def create_AE_pop(
         for e in range(epochs):
             print(f"  - {e} epoch")
             for X, _ in data:
+                X = X.to(device)
                 optimiser.zero_grad()
-                X_noisy = X + noise * torch.randn_like(X)
+                X_noisy = torch.clamp(X + noise * torch.randn_like(X), 0, 1) # avoid going out 0, 1???
                 
                 pred = auto(X_noisy)
                 loss = loss_fn(pred, X)
