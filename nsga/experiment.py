@@ -448,7 +448,7 @@ class ExperimentV2():
         self._model1 = model1
         self._model2 = model2
         self._pop = pop
-        self._autopop = None
+        # self._autopop = None
         self._AEepochs = AEepochs
         self._dataset = dataset.lower()
         self._classes = classes
@@ -632,7 +632,7 @@ class ExperimentV2():
             self._set_seed(seed)
             self._setup()
 
-            self._autopop = create_AE_pop(
+            autopop = create_AE_pop( # instead of storing in self._autopop
                 self._model2,
                 self._pop,
                 self._input_shape,
@@ -671,7 +671,7 @@ class ExperimentV2():
                 )
 
                 if self._prestep:
-                    evolver.transfer_pop(self._autopop) # ⛔️
+                    evolver.transfer_popV2(autopop, self._model1, self._input_shape, self._classes) # ⛔️
 
                 evolver.evolve(
                     generations=self._bound_gens,
@@ -721,7 +721,7 @@ class ExperimentV2():
             )
             
             if self._prestep:
-                evolver.transfer_pop(self._autopop)
+                evolver.transfer_popV2(autopop, self._model1, self._input_shape, self._classes)
 
             evolver.set_bounds(b1=self._bounds1, b2=self._bounds2)
 
