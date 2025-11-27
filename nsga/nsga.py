@@ -357,26 +357,29 @@ class NSGA2():
     def get_best_front(self):
         return self._best_front
 
-    def get_transfer_pop(self, to_model, in_shape, classes, freeze=False):
-        """should I just swap the new pop in??"""
-        pop = []
-        for m in self._population:
-            weights = m.encoder.state_dict()
-            new = to_model(input_shape=in_shape, stride=m.get_stride(), classes=classes).to(self._device)
-            new.encoder.load_state_dict(weights)
+    # def get_transfer_pop(self, to_model, in_shape, classes, freeze=False):
+    #     """should I just swap the new pop in??"""
+    #     pop = []
+    #     for m in self._population:
+    #         weights = m.encoder.state_dict()
+    #         new = to_model(input_shape=in_shape, stride=m.get_stride(), classes=classes).to(self._device)
+    #         new.encoder.load_state_dict(weights)
 
-            if freeze:
-                for param in new.parameters():
-                    param.requires_grad = False
+    #         if freeze:
+    #             for param in new.parameters():
+    #                 param.requires_grad = False
 
-            pop.append(new)
+    #         pop.append(new)
         
-        return pop
+    #     return pop
+    
+    # def transfer_pop(self, pop):
+    #     self._population = pop
     
 
     def transfer_popV2(self, pop, to_model, in_shape, classes, freeze=False):
         """should I just swap the new pop in??"""
-        pop = []
+        finalpop = []
         for m in pop:
             weights = m.encoder.state_dict()
             new = to_model(input_shape=in_shape, stride=m.get_stride(), classes=classes).to(self._device)
@@ -386,13 +389,9 @@ class NSGA2():
                 for param in new.parameters():
                     param.requires_grad = False
 
-            pop.append(new)
+            finalpop.append(new)
         
-        self._population = pop
-
-
-    def transfer_pop(self, pop):
-        self._population = pop
+        self._population = finalpop
     
 
 
