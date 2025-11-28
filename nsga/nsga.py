@@ -432,29 +432,29 @@ class NSGA2():
             self._check_biggest()
             interspecies = 0
             for _ in range(self._pop_size//2):
-                if random.random() < inter_r and len(self._islands)>= 2: # unlikely cross-species crossover 🔥
-                    random_keys = random.sample(list(self._islands.keys()), k=2)
-                    key1, key2 = random_keys[0], random_keys[1]
-                    pool1, pool2 = self._islands[key1], self._islands[key2]
-                    parent1, parent2 = random.choice(pool1), random.choice(pool2)
-                    parent1, parent2 = embed(parent1, self._biggest, self._device), embed(parent2, self._biggest, self._device)
-                    interspecies += 1
-                else: # regular intraspecies crossover 🔥
-                    key = random.choice(list(self._islands.keys()))
-                    pool = self._islands[key]
-                    if len(pool) == 1:
-                        parent1, parent2 = pool[0], deepcopy(pool[0])
-                        parent1 = embed(parent1, self._biggest, self._device)
-                        parent2 = embed(parent2, self._biggest, self._device)
-                    elif len(pool) == 2:
-                        parent1, parent2 = pool[0], pool[1]
-                        parent1 = embed(parent1, self._biggest, self._device)
-                        parent2 = embed(parent2, self._biggest, self._device)
-                    else:
-                        parents = random.sample(pool, k=2)
-                        parent1, parent2 = parents[0], parents[1]
-                        parent1 = embed(parent1, self._biggest, self._device)
-                        parent2 = embed(parent2, self._biggest, self._device)
+                # if random.random() < inter_r and len(self._islands)>= 2: # unlikely cross-species crossover 🔥
+                #     random_keys = random.sample(list(self._islands.keys()), k=2)
+                #     key1, key2 = random_keys[0], random_keys[1]
+                #     pool1, pool2 = self._islands[key1], self._islands[key2]
+                #     parent1, parent2 = random.choice(pool1), random.choice(pool2)
+                #     parent1, parent2 = embed(parent1, self._biggest, self._device), embed(parent2, self._biggest, self._device)
+                #     interspecies += 1
+                # else: # regular intraspecies crossover 🔥
+                key = random.choice(list(self._islands.keys()))
+                pool = self._islands[key]
+                if len(pool) == 1:
+                    parent1, parent2 = pool[0], deepcopy(pool[0])
+                    parent1 = embed(parent1, self._biggest, self._device)
+                    parent2 = embed(parent2, self._biggest, self._device)
+                elif len(pool) == 2:
+                    parent1, parent2 = pool[0], pool[1]
+                    parent1 = embed(parent1, self._biggest, self._device)
+                    parent2 = embed(parent2, self._biggest, self._device)
+                else:
+                    parents = random.sample(pool, k=2)
+                    parent1, parent2 = parents[0], parents[1]
+                    parent1 = embed(parent1, self._biggest, self._device)
+                    parent2 = embed(parent2, self._biggest, self._device)
                 
                 
                 self._check_biggest()
