@@ -60,7 +60,7 @@ basepath.mkdir(parents=True, exist_ok=True)
 
 # --–––---––– initialisation –––---–––-- #
 print("\nstarting workflow!")
-workflow = exp.ExperimentV3(
+workflow = exp.ExperimentV4(
     model1=model1,
     model2=model2,
     pop=pop,
