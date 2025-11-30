@@ -2,7 +2,7 @@ import math
 import torch
 
 
-def flatten(model, device):
+def flatten(model):
     """
      flatten each parameter into a 1D tensor and concatenate
     """
