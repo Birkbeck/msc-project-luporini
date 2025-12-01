@@ -206,7 +206,7 @@ class GeneticAlgorithmV2():
         return torch.mean(torch.tensor(fitnesses)).item()
         
 
-    def evolve(self, generations=10, subset_fraction=0.07, m_r=0.01, m_s=0.2, mode="uniform"):
+    def evolve(self, generations=10, subset_fraction=0.07, m_r_min=0.01, m_r_max=0.2, m_r_decay = True, power=2, m_s=0.2, mode="uniform"):
         """
         evolution method👍
 
@@ -217,7 +217,6 @@ class GeneticAlgorithmV2():
             report_jump: integer n, with report given every n generations
         """
         #######################################
-        print("starting experiment")
         train_loader, _ = self._trainval_loaders(subset_fraction)
             
         self._fit_fn = model_fitness(train_loader, self._problem)
@@ -227,6 +226,9 @@ class GeneticAlgorithmV2():
         )
         
         for gen in range(generations):
+            if m_r_decay:
+                m_r = m_r_min + (m_r_max - m_r_min)*(1 - (gen/(generations - 1))**power)
+
             # mating events
             flat_children = [] # TOURNAMENT 🔥
             for _ in range(self._pop_size//2): 
@@ -261,7 +263,7 @@ class GeneticAlgorithmV2():
             if self._problem == "classification":
                 print(f"{gen} gen | avg. population acc: {self._avg_fitness()}")
             else:
-                print(f"{gen} gen | avg. population finess: {self._avg_fitness()}")
+                print(f"{gen} gen | avg. population fitness: {self._avg_fitness()}")
             
 
     def extract_best(self, k=1):
@@ -269,13 +271,11 @@ class GeneticAlgorithmV2():
         sorted_population = sorted(zipped, key=lambda x: x[1], reverse=True)
         return sorted_population[:k]
     
-    def get_agv_fitness(self):
-        """returns a list fitnesses - avg.fit per generation"""
-        return self._avg_fitness
-    
-    def get_final_fitness(self):
-        """returns the avg.fitness of the last generation"""
-        return self._avg_fitness[-1]
+
+    def get_fitintime(self):
+        """returns the list of fitnesses - avg.fit per generation"""
+        return self._avgfitness
+
     
     def transfer_popV2(self, pop, model, in_shape, classes, freeze=False):
         """should I just swap the new pop in??"""
@@ -309,9 +309,11 @@ class GAExperiment():
             prestep=False,
             AEepochs=4,
             classes=10,
-            evo_runs=1,
-            evo_gens=30,
-            mutation_rate=0.2,
+            runs=1,
+            gens=30,
+            mutation_rate_min=0.01,
+            mutation_rate_max=0.2,
+            mutation_rate_decay=True,
             mutation_strength=0.2,
             mutation_mode="light",
             my_device=torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"),
@@ -329,25 +331,26 @@ class GAExperiment():
         self._prestep = prestep
         self._AEepochs = AEepochs
         self._classes = classes
-        self._evo_runs = evo_runs
-        self._evo_gens = evo_gens
-        self._m_rate = mutation_rate
+        self._runs = runs
+        self._gens = gens
+        self._m_r_min = mutation_rate_min
+        self._m_r_max = mutation_rate_max
+        self._decay = mutation_rate_decay
         self._m_strength = mutation_strength
         self._m_mode = mutation_mode
         
-        self._run = 1
-        self._max_runs = None
+        self._run = 0
         self._current_seed = None
 
         self._device = my_device
         self._resume = resume
         self._check = checkpoint
         
-        self._results = [
-            {"dataset": self._dataset, # list of dictionaries
-             "pop_size": self._pop, # first one, basic info
-             "evo_runs": self._evo_runs,
-             "evo_gens": self._evo_gens,
+        self._results = [ # list of dictionaries
+            {"dataset": self._dataset, # this is the first one, basic info
+             "pop_size": self._pop, 
+             "evo_runs": self._runs,
+             "evo_gens": self._gens,
              "exp_condition": self._prestep,
              "seed": self._seed}
         ]
@@ -382,7 +385,7 @@ class GAExperiment():
                 "results": self._results,
                 "run": self._run,
                 "seed": self._seed,
-                "max_runs": self._max_runs,
+                "runs": self._runs,
                 "current_seed": self._current_seed,
                 "prestep": self._prestep
             }, f)
@@ -395,7 +398,7 @@ class GAExperiment():
         self._results = data["results"]
         self._run = data["run"]
         self._seed = data["seed"]
-        self._max_runs = data["max_runs"]
+        self._runs = data["runs"]
         self._current_seed = data["current_seed"]
         self._prestep = data["prestep"]
 
@@ -418,15 +421,14 @@ class GAExperiment():
             if checkpoints:
                 last_checkpoint = checkpoints[-1]
                 self._load_checkpoint(last_checkpoint)
-            
-        else:
-            self._max_runs = self._evo_runs
+
         
         self._setup()
-        print(f"starting experiment. AE condition: {self._prestep}")
         seed = self._current_seed if self._resume else self._seed
-        for run in range(self._run, self._max_runs):
-            print(f"starting run {run}")
+        print(f"\n* starting experiment. AE condition: {self._prestep}")
+        
+        for run in range(self._run, self._runs):
+            print(f"  - run {run}")
             self._set_seed(seed)
 
             if self._prestep:
@@ -436,7 +438,7 @@ class GAExperiment():
                     self._input_shape,
                     self._AEepochs,
                     self._stride,
-                    self._train_loader
+                    self._train_loader # requires dataloader...
                 )
                 print("  - autoencoder population has been created..")
             
@@ -444,7 +446,7 @@ class GAExperiment():
                 self._model1(stride=self._stride),
                 True,
                 self._pop,
-                self._train_loader,
+                self._train, # requires raw set to pass to _trainval_loaders...
                 problem=self._problem
             )
             
@@ -454,16 +456,18 @@ class GAExperiment():
                 )
             
             evolver.evolve(
-                generations=self._evo_gens,
+                generations=self._gens,
                 subset_fraction=0.07,
-                m_r=self._m_rate,
+                m_r_min=self._m_r_min,
+                m_r_max=self._m_r_max,
+                m_r_decay = self._decay,
                 m_s=self._m_strength,
                 mode=self._m_mode
             )
 
             # extract results
-            fitintime = evolver.get_agv_fitness()
-            finalfit = evolver.get_final_fitness()
+            fitintime = evolver.get_fitintime() # list of avg.fits
+            finalfit = fitintime[-1] # lat gen's fit
             result = {"fit_in_time": fitintime, "finalfit":finalfit}
             self._results.append(result)
 
@@ -481,3 +485,8 @@ class GAExperiment():
                 checkpath = self._path/f"checkpoint_{run}.json"
                 self._checkpoint(checkpath) #⛔️
                 print(f"\n  - hit checkpoint! next run coming..")
+        
+
+        resultpath = self._path/"results.json"
+        if resultpath is not None:
+            self._save_results(resultpath)

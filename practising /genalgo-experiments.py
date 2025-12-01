@@ -18,16 +18,18 @@ pop = 10
 dataset = "mnist"
 problem = "classification"
 seed = 34
-AEepochs=4,
-classes=10,
-evo_runs=1,
-evo_gens=30,
-mutation_rate=0.2,
-mutation_strength=0.2,
-mutation_mode="light",
-my_device=torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"),
-resume=False,
-checkpoint=True
+AEepochs = 4
+classes = 10
+runs = 30
+gens = 30
+mutation_rate_min = 0.01
+mutation_rate_max = 0.2
+mutations_rate_decay = True
+mutation_strength = 0.2
+mutation_mode = "light"
+my_device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+resume = False
+checkpoint = False
 
 
 prestep = False 
@@ -37,9 +39,10 @@ else:
     condition = "noAE"
 
 
+# --------- file management -------- #
 print(os.getcwd())
 # move to appropriate nsga directory
-name = "msc_project_repo"
+name = "nsga"
 basedir = None
 cwd = Path().cwd().resolve()
 if cwd.name != name:
@@ -49,10 +52,11 @@ if cwd.name != name:
         raise FileNotFoundError("could not find nsga directory")
 else:
     basedir = cwd
-basepath = basedir / "practising" / f"{dataset}" / f"{condition}"
+basepath = basedir / "tests" / "GA" / f"{dataset}" / f"{condition}"
 basepath.mkdir(parents=True, exist_ok=True)
 
 
+# ---------- experiment ----------- #
 workflow = gen.GAExperiment(
     model1=classifier, # task model
     model2=autoencoder, # autoencoder
@@ -65,9 +69,11 @@ workflow = gen.GAExperiment(
     prestep=prestep,
     AEepochs=AEepochs,
     classes=classes,
-    evo_runs=evo_runs,
-    evo_gens=evo_gens,
-    mutation_rate=mutation_rate,
+    runs=runs,
+    gens=gens,
+    mutation_rate_min=mutation_rate_min,
+    mutation_rate_max=mutation_rate_max,
+    mutation_rate_decay=mutations_rate_decay,
     mutation_strength=mutation_strength,
     mutation_mode=mutation_mode,
     my_device=my_device,
