@@ -1,3 +1,4 @@
+import random
 import torch
 from torch import nn
 
@@ -311,3 +312,46 @@ class TinyConvClassifier(nn.Module):
         output = self.encoder(data)
         output = self.classifier_head(output)
         return output
+    
+
+
+def create_AE_pop(
+        model,
+        size,
+        shape,
+        epochs,
+        stride,
+        data, # data loader
+        noise=0.4,
+        device=torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+):
+    """
+    ⛔️ could train on subset?! less compute?!
+    """
+    loss_fn = nn.MSELoss()
+
+    pop = []
+    for m in range(size):
+        print(f"* {m} model")
+        auto = model(
+            input_shape=shape,
+            stride=stride
+        ).to(device)
+        
+        optimiser = torch.optim.Adam(auto.parameters(), lr=0.01)
+        auto.train()
+        for e in range(epochs):
+            print(f"  - {e} epoch")
+            for X, _ in data:
+                X = X.to(device)
+                optimiser.zero_grad()
+                X_noisy = torch.clamp(X + noise * torch.randn_like(X), 0, 1) # avoid going out 0, 1???
+                
+                pred = auto(X_noisy)
+                loss = loss_fn(pred, X)
+                loss.backward()
+                optimiser.step()
+
+        pop.append(auto)
+    
+    return pop

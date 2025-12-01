@@ -1,10 +1,14 @@
 from copy import deepcopy
+import json
 import random
 import numpy as np
 from sklearn.model_selection import train_test_split
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Subset
+from torchvision.datasets import MNIST, FashionMNIST, CIFAR10
+from torchvision.transforms import ToTensor
+from architectures import create_AE_pop
 
 def flatten(model):
     """
@@ -55,12 +59,12 @@ def mutate(guy:torch.Tensor, m_rate=0.2, m_strength=0.3, mode="small") -> torch.
     return guy + mutation
 
 
-def crossover(parent1, parent2, type="uniform"):
+def crossover(parent1, parent2, mode="uniform"):
     """
     uniform crossover between two flat 1D tensors by default. If type != "uniform", then one-point.
     """
     device = parent1.device
-    if type == "uniform":
+    if mode == "uniform":
         mask = torch.randint_like(parent1, 2, device=device).bool()
         child1 = torch.where(mask, parent1, parent2)
         child2 = torch.where(mask, parent2, parent1)
@@ -150,18 +154,22 @@ class GeneticAlgorithmV2():
 
     def __init__(
             self,
-            model,
+            model, # instance!!!
+            population,
             pop_size,
             data,
-            problem="AE"
+            problem="AE",
+            device=torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     ):
         self._model = model
         self._pop_size = pop_size # ⁉️need it⁉️
         self._fit_fn = None
         self._data = data
-        self._population = [deepcopy(model) for i in range(self._pop_size)]
+        self._population = [deepcopy(model.to(device)) for i in range(self._pop_size)] if population else None
         self._fitnesses = [None for i in range(self._pop_size)]
+        self._avgfitness = [] # per generation
         self._problem = problem
+        self._device = device
     
     def _trainval_loaders(self, fraction):
         """
@@ -198,7 +206,7 @@ class GeneticAlgorithmV2():
         return torch.mean(torch.tensor(fitnesses)).item()
         
 
-    def evolve(self, generations=10, subset_fraction=0.07, m_r=0.01, m_s=0.2):
+    def evolve(self, generations=10, subset_fraction=0.07, m_r=0.01, m_s=0.2, mode="uniform"):
         """
         evolution method👍
 
@@ -228,7 +236,7 @@ class GeneticAlgorithmV2():
                 parent1 = flatten(parent1)
                 parent2 = flatten(parent2)
                         
-                child1, child2 = crossover(parent1, parent2)
+                child1, child2 = crossover(parent1, parent2, mode=mode)
                 child1 = mutate(child1, m_rate=m_r, m_strength=m_s, mode="small")
                 child2 = mutate(child2, m_rate=m_r, m_strength=m_s, mode="small")
                     
@@ -248,6 +256,8 @@ class GeneticAlgorithmV2():
             self._population = [m for m, _ in sorted_whole[:self._pop_size]]
             self._fitnesses = [f for _, f in sorted_whole[:self._pop_size]]
 
+            self._avgfitness.append(self._avg_fitness())
+
             if self._problem == "classification":
                 print(f"{gen} gen | avg. population acc: {self._avg_fitness()}")
             else:
@@ -258,85 +268,216 @@ class GeneticAlgorithmV2():
         zipped = list(zip(self._population, self._fitnesses))
         sorted_population = sorted(zipped, key=lambda x: x[1], reverse=True)
         return sorted_population[:k]
-
-
-
-
-
-
-# class GeneticAlgorithm():
-
-
-#     def __init__(
-#             self,
-#             model,
-#             pop_size,
-#             data:DataLoader,
-#             fit_fn=model_fitness, # returns a function when instantiated
-#             problem="AE"
-#     ):
-#         self._model = model
-#         self._pop_size = pop_size # ⁉️need it⁉️
-#         self._fit_fn = fit_fn(data, problem=problem) #model_fitness is HIGHER ORDER
-#         self._data = data
-#         self._population = [deepcopy(model) for i in range(self._pop_size)]
-#         self._fitnesses = [None for i in range(self._pop_size)]
-        
-#     def evolve(self, generations=10, report_jump=2, m_prob=0.3):
-#         """
-#         evolution method👍
-
-#         careful: do you want access to mutation parameters????
-
-#         args:
-#             generations: number of generations
-#             report_jump: integer n, with report given every n generations
-#         """
-#         for i in range(generations):
-#             parent_fitnesses = group_fitness(self._population, self._fit_fn)
-#             parents = list(zip(self._population, parent_fitnesses))
-            
-#             children = []  # too big tournament??? pop_size//3??? just 3-4???
-#             for tournament in range(self._pop_size//2):
-#                 pool = random.sample(parents, k=self._pop_size//2)
-#                 sorted_pool = sorted(pool, key=lambda x: x[1], reverse=True)
-#                 parent1, parent2 = sorted_pool[0][0], sorted_pool[1][0]
-#                 flat1, flat2 = flatten(parent1), flatten(parent2)
-#                 child1, child2 = crossover(flat1, flat2)
-
-#                 # if random.random() < m_prob:
-#                 #     child1 = mutate(child1)
-#                 # if random.random() < m_prob:
-#                 #     child2 = mutate(child2)
-                
-#                 # do I want children to always mutate⁉️
-#                 child1 = mutate(child1)
-#                 child2 = mutate(child2)
-
-#                 child1 = remodel(child1, deepcopy(self._model))
-#                 child2 = remodel(child2, deepcopy(self._model))
-                
-#                 children.extend([child1, child2])
-
-#             children_fitnesses = group_fitness(children, self._fit_fn)
-#             children = list(zip(children, children_fitnesses))
-#             whole = parents + children
-#             sorted_whole = sorted(whole, key=lambda x: x[1], reverse=True)
-
-#             self._population = [m for m, _ in sorted_whole[:self._pop_size]]
-#             self._fitnesses = [f for _, f in sorted_whole[:self._pop_size]]
-
-#             if (i+1) % report_jump == 0:
-#                 print(f"{i+1}th gen | avg. population finess: {self.avg_fitness()}")
-
-
-#     def avg_fitness(self):
-#         fitnesses = [i for i in self._fitnesses if i is not None]
-#         if not fitnesses:
-#             return None
-#         return torch.mean(torch.tensor(fitnesses)).item()
     
-#     def extract_best(self, k=1):
-#         zipped = list(zip(self._population, self._fitnesses))
-#         sorted_population = sorted(zipped, key=lambda x: x[1], reverse=True)
-#         return sorted_population[:k]
+    def get_agv_fitness(self):
+        """returns a list fitnesses - avg.fit per generation"""
+        return self._avg_fitness
+    
+    def get_final_fitness(self):
+        """returns the avg.fitness of the last generation"""
+        return self._avg_fitness[-1]
+    
+    def transfer_popV2(self, pop, model, in_shape, classes, freeze=False):
+        """should I just swap the new pop in??"""
+        finalpop = []
+        for m in pop:
+            weights = m.encoder.state_dict()
+            new = model(input_shape=in_shape, stride=m.get_stride(), classes=classes).to(self._device)
+            new.encoder.load_state_dict(weights)
+
+            if freeze:
+                for param in new.parameters():
+                    param.requires_grad = False
+
+            finalpop.append(new)
+        
+        self._population = finalpop
+        
+
+
+class GAExperiment():
+    def __init__(
+            self,
+            model1, # task model
+            model2, # autoencoder
+            stride,
+            pop,
+            dataset,
+            problem,
+            seed,
+            experiment_path,
+            prestep=False,
+            AEepochs=4,
+            classes=10,
+            evo_runs=1,
+            evo_gens=30,
+            mutation_rate=0.2,
+            mutation_strength=0.2,
+            mutation_mode="light",
+            my_device=torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"),
+            resume=False,
+            checkpoint=True
+    ):
+        self._model1 = model1
+        self._model2 = model2
+        self._stride = stride
+        self._pop = pop
+        self._dataset = dataset
+        self._problem = problem
+        self._seed = seed
+        self._path = experiment_path
+        self._prestep = prestep
+        self._AEepochs = AEepochs
+        self._classes = classes
+        self._evo_runs = evo_runs
+        self._evo_gens = evo_gens
+        self._m_rate = mutation_rate
+        self._m_strength = mutation_strength
+        self._m_mode = mutation_mode
+        
+        self._run = 1
+        self._max_runs = None
+        self._current_seed = None
+
+        self._device = my_device
+        self._resume = resume
+        self._check = checkpoint
+        
+        self._results = [
+            {"dataset": self._dataset, # list of dictionaries
+             "pop_size": self._pop, # first one, basic info
+             "evo_runs": self._evo_runs,
+             "evo_gens": self._evo_gens,
+             "exp_condition": self._prestep,
+             "seed": self._seed}
+        ]
+    
+    def _setup(self):
+        if self._dataset == "mnist":
+            self._test = MNIST("./datasets", download=True, train=False, transform=ToTensor())
+            self._train = MNIST("./datasets", download=True, train=True, transform=ToTensor())
+            self._input_shape = (1, 28, 28)
+        elif self._dataset == "fashion":
+            self._train = FashionMNIST("./datasets", download=True, train=True, transform=ToTensor())
+            self._test = FashionMNIST("./datasets", download=True, train=False, transform=ToTensor())
+            self._input_shape = (1, 28, 28)
+        else:
+            self._train = CIFAR10("./datasets", download=True, train=True, transform=ToTensor())
+            self._test = CIFAR10("./datasets", download=True, train=False, transform=ToTensor())
+            self._input_shape = (3, 32, 32)
+        
+        self._train_loader = DataLoader(self._train, batch_size=30)
+        self._test_loader = DataLoader(self._test, batch_size=30)
+    
+
+    def _set_seed(self, seed):
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+    
+    def _checkpoint(self, filepath):
+        with open(filepath, "w") as f:
+            json.dump({
+                "results": self._results,
+                "run": self._run,
+                "seed": self._seed,
+                "max_runs": self._max_runs,
+                "current_seed": self._current_seed,
+                "prestep": self._prestep
+            }, f)
+    
+    def _load_checkpoint(self, checkpath):
+        """checkpoint = file.json"""
+        with open(checkpath, "r") as f:
+            data = json.load(f)
+
+        self._results = data["results"]
+        self._run = data["run"]
+        self._seed = data["seed"]
+        self._max_runs = data["max_runs"]
+        self._current_seed = data["current_seed"]
+        self._prestep = data["prestep"]
+
+    
+    def _save_results(self, path):
+        with open(path, "w") as f:
+            json.dump(self._results, f)
+
+    
+    def get_results(self):
+        return self._results
+    
+
+    def run(self):
+        self._path.mkdir(parents=True, exist_ok=True)
+        
+        ###### if resume, load checkpoint ########
+        if self._resume and self._path is not None:
+            checkpoints = sorted(self._path.glob(f"checkpoint_*.json"))
+            if checkpoints:
+                last_checkpoint = checkpoints[-1]
+                self._load_checkpoint(last_checkpoint)
+            
+        else:
+            self._max_runs = self._evo_runs
+        
+        self._setup()
+        print(f"starting experiment. AE condition: {self._prestep}")
+        seed = self._current_seed if self._resume else self._seed
+        for run in range(self._run, self._max_runs):
+            print(f"starting run {run}")
+            self._set_seed(seed)
+
+            if self._prestep:
+                autopop = create_AE_pop(
+                    self._model2,
+                    self._pop,
+                    self._input_shape,
+                    self._AEepochs,
+                    self._stride,
+                    self._train_loader
+                )
+                print("  - autoencoder population has been created..")
+            
+            evolver = GeneticAlgorithmV2(
+                self._model1(stride=self._stride),
+                True,
+                self._pop,
+                self._train_loader,
+                problem=self._problem
+            )
+            
+            if self._prestep:
+                evolver.transfer_popV2(
+                    autopop, self._model1, self._input_shape, self._classes
+                )
+            
+            evolver.evolve(
+                generations=self._evo_gens,
+                subset_fraction=0.07,
+                m_r=self._m_rate,
+                m_s=self._m_strength,
+                mode=self._m_mode
+            )
+
+            # extract results
+            fitintime = evolver.get_agv_fitness()
+            finalfit = evolver.get_final_fitness()
+            result = {"fit_in_time": fitintime, "finalfit":finalfit}
+            self._results.append(result)
+
+            # update run and seed for checkpointing
+            self._run +=1
+            self._seed +=1
+            seed +=1
+
+            if self._prestep:
+                del autopop # make sure that GPU is freed
+                torch.cuda.empty_cache() # ⁉️
+            
+            if self._check:
+                self._current_seed = seed
+                checkpath = self._path/f"checkpoint_{run}.json"
+                self._checkpoint(checkpath) #⛔️
+                print(f"\n  - hit checkpoint! next run coming..")

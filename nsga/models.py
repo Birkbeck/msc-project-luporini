@@ -126,7 +126,7 @@ def create_AE_pop(
         interval,
         data,
         noise=0.4,
-        device=torch.device("cuda") if torch.cuda.is_available() else "cpu"
+        device=torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 ):
     """
     ⛔️ could train on subset?! less compute?!

@@ -1273,7 +1273,7 @@ class ExperimentV4():
         self._current_seed = None
         self._experiment_path = experiment_path
 
-        self._run = 1 # current run?
+        self._run = 0 # current run?
         self._max_runs = None
 
         self._best = None
