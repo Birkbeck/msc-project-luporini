@@ -3,9 +3,9 @@ import random
 import math
 from collections import defaultdict
 
-from operators import crossover, mutate
-from utils import flatten, embed, remodel, convergence, euclidean
-from fitness import model_fitness, model_runtime, normalise_objective, group_fitness
+from nsga.operators import crossover, mutate
+from nsga.utils import flatten, embed, remodel, convergence, euclidean
+from nsga.fitness import model_fitness, model_runtime, normalise_objective, group_fitness
 
 import numpy as np
 from sklearn.model_selection import train_test_split

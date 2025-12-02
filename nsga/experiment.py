@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import nsga
 
-from models import create_AE_pop
+from nsga.models import create_AE_pop
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST, FashionMNIST, CIFAR10
