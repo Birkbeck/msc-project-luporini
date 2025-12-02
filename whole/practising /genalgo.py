@@ -357,16 +357,16 @@ class GAExperiment():
     
     def _setup(self):
         if self._dataset == "mnist":
-            self._test = MNIST("./datasets", download=True, train=False, transform=ToTensor())
-            self._train = MNIST("./datasets", download=True, train=True, transform=ToTensor())
+            self._test = MNIST("./whole/datasets", download=True, train=False, transform=ToTensor())
+            self._train = MNIST("./whole/datasets", download=True, train=True, transform=ToTensor())
             self._input_shape = (1, 28, 28)
         elif self._dataset == "fashion":
-            self._train = FashionMNIST("./datasets", download=True, train=True, transform=ToTensor())
-            self._test = FashionMNIST("./datasets", download=True, train=False, transform=ToTensor())
+            self._train = FashionMNIST("./whole/datasets", download=True, train=True, transform=ToTensor())
+            self._test = FashionMNIST("./whole/datasets", download=True, train=False, transform=ToTensor())
             self._input_shape = (1, 28, 28)
         else:
-            self._train = CIFAR10("./datasets", download=True, train=True, transform=ToTensor())
-            self._test = CIFAR10("./datasets", download=True, train=False, transform=ToTensor())
+            self._train = CIFAR10("./whole/datasets", download=True, train=True, transform=ToTensor())
+            self._test = CIFAR10("./whole/datasets", download=True, train=False, transform=ToTensor())
             self._input_shape = (3, 32, 32)
         
         self._train_loader = DataLoader(self._train, batch_size=30)

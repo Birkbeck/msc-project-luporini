@@ -14,7 +14,7 @@ def flatten(model):
 
 def embed(model, biggest, device):
     device = next(model.parameters()).device
-    flat = flatten(model, device=device)
+    flat = flatten(model)
     mu = flat.mean().item()
 
     size = flat.numel()

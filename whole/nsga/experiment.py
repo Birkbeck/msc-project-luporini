@@ -5,9 +5,10 @@ from copy import deepcopy
 import subprocess
 import numpy as np
 import torch
-import nsga
 
-from nsga.models import create_AE_pop
+from .nsga import NSGA2
+from .models import create_AE_pop
+
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST, FashionMNIST, CIFAR10
@@ -835,8 +836,8 @@ class ExperimentV3():
             classes=10,
             bound_runs=2,
             bound_gens=2,
-            evo_runs=2,
-            evo_gens=2,
+            runs=2,
+            gens=2,
             intersp_cross_rate=0.01,
             mutation_strength=0.3,
             mutation_rate=0.1,
@@ -869,8 +870,8 @@ class ExperimentV3():
         
         self._bound_runs = bound_runs
         self._bound_gens = bound_gens
-        self._evo_runs = evo_runs
-        self._evo_gens = evo_gens
+        self._runs = runs
+        self._gens = gens
         self._exp_condition = "AE" if prestep else "noAE"
 
         self._resume = resume
@@ -882,31 +883,30 @@ class ExperimentV3():
         self._experiment_path = experiment_path
 
         self._run = 0
-        self._max_runs = None
 
         self._best = None
         self._results = [{"dataset": self._dataset, # list of dictionaries 
                           "pop_size": self._pop, # first one, basic info
                           "bound_runs": self._bound_runs,
                           "bound_gens": self._bound_gens,
-                          "evo_runs": self._evo_runs,
-                          "evo_gens": self._evo_gens,
+                          "runs": self._runs,
+                          "gens": self._gens,
                           "exp_condition": self._exp_condition,
                           "interval": self._interval,
                           "seed": self._seed}] # then, one per gen
 
     def _setup(self):
         if self._dataset == "mnist":
-            self._train = MNIST("./datasets", download=True, train=True, transform=transforms.ToTensor())
-            self._test = MNIST("./datasets", download=True, train=False, transform=transforms.ToTensor())
+            self._train = MNIST("./whole/datasets", download=True, train=True, transform=transforms.ToTensor())
+            self._test = MNIST("./whole/datasets", download=True, train=False, transform=transforms.ToTensor())
             self._input_shape = (1, 28, 28)
         elif self._dataset == "fashion":
-            self._train = FashionMNIST("./datasets", download=True, train=True, transform=transforms.ToTensor())
-            self._test = FashionMNIST("./datasets", download=True, train=False, transform=transforms.ToTensor())
+            self._train = FashionMNIST("./whole/datasets", download=True, train=True, transform=transforms.ToTensor())
+            self._test = FashionMNIST("./whole/datasets", download=True, train=False, transform=transforms.ToTensor())
             self._input_shape = (1, 28, 28)
         else:
-            self._train = CIFAR10("./datasets", download=True, train=True, transform=transforms.ToTensor())
-            self._test = CIFAR10("./datasets", download=True, train=False, transform=transforms.ToTensor())
+            self._train = CIFAR10("./whole/datasets", download=True, train=True, transform=transforms.ToTensor())
+            self._test = CIFAR10("./whole/datasets", download=True, train=False, transform=transforms.ToTensor())
             self._input_shape = (3, 32, 32)
         
         self._train_loader = DataLoader(self._train, batch_size=30)
@@ -925,8 +925,6 @@ class ExperimentV3():
                 "bounds1": self._bounds1,
                 "bounds2": self._bounds2,
                 "run": self._run,
-                "seed": self._seed,
-                "max_runs": self._max_runs,
                 "current_seed": self._current_seed
             }, f)
     
@@ -939,9 +937,10 @@ class ExperimentV3():
         self._bounds1 = data["bounds1"]
         self._bounds2 = data["bounds2"]
         self._run = data["run"]
-        self._seed = data["seed"]
-        self._max_runs = data["max_runs"]
         self._current_seed = data["current_seed"]
+        self._runs = data["results"][0]["runs"]
+        self._gens = data["results"][0]["gens"]
+        self._seed = data["results"][0]["seed"]
 
     
     def _save_results(self, path):
@@ -993,6 +992,8 @@ class ExperimentV3():
         # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
         self._experiment_path.mkdir(parents=True, exist_ok=True)
         
+        self._setup()
+
         ###### if resume, load checkpoint ########
         if self._resume and self._experiment_path is not None:
             checkpoints = sorted(self._experiment_path.glob(f"checkpoint_*.json"))
@@ -1013,91 +1014,87 @@ class ExperimentV3():
             # sys.exit()
 
         else:
-            self._max_runs = self._evo_runs
-
-
-        self._setup()
-        #############################################
-        # –––––– if prestep, autoencoder !!! ––––––
-        #############################################
-        print("\nstarting experimental runs..")
-        seed = self._current_seed if self._resume else self._seed
-        for run in range(self._run, self._max_runs):
-            print(f"\ninitiating round {run}")
-            self._set_seed(seed)
-            
-            if self._prestep:
-                print("\n* creating autoencoders..")
-
-                autopop = create_AE_pop( # instead of storing in self._autopop
-                    self._model2,
-                    self._pop,
-                    self._input_shape,
-                    self._AEepochs,
-                    self._interval,
-                    self._train_loader,
-                    noise=0.4,
-                    device=self._device
-                )
-
-                print("  - autoencoder population was created..")
-
             #############################################
+            # –––––– if prestep, autoencoder !!! ––––––
             #############################################
-            # ––– YOLO/classifier experiment (–>DV) –––
-            #############################################
-            #############################################
-            b1, b2 = [], []
-            print("\n* estimating fitness bounds..")
-            boundseed = self._current_seed + 100 if self._resume else self._seed + 100
-            for boundrun in range(self._bound_runs):
-                print(f"  - bounds estimation round {boundrun}")
-                self._set_seed(boundseed)
-
-                evolver = nsga.NSGA2(
-                    pop_size=self._pop,
-                    model=self._model1,
-                    input_shape=self._input_shape,
-                    interval=self._interval,
-                    data=self._train,
-                    problem=self._problem,
-                    device=self._device
-                )
-
+            print("\nstarting experimental runs..")
+            seed = self._current_seed if self._resume else self._seed
+            for run in range(self._run, self._evo_runs):
+                print(f"\ninitiating round {run}")
+                self._set_seed(seed)
+                
                 if self._prestep:
-                    evolver.transfer_popV2(autopop, self._model1, self._input_shape, self._classes) # ⛔️
+                    print("\n* creating autoencoders..")
 
-                evolver.evolve(
-                    generations=self._bound_gens,
-                    bound_estimation=True,
-                    prestep=False,
-                    inter_r=self._inter_r,
-                    m_r=self._mutation_r,
-                    m_s=self._mutation_s,
-                    m_mode=self._m_mode
-                )
+                    autopop = create_AE_pop( # instead of storing in self._autopop
+                        self._model2,
+                        self._pop,
+                        self._input_shape,
+                        self._AEepochs,
+                        self._interval,
+                        self._train_loader,
+                        noise=0.4,
+                        device=self._device
+                    )
 
-                bound1 = evolver.get_bounds()[0] # (min, max) from one evo
-                bound2 = evolver.get_bounds()[1] # # (min, max) from one evo
-                b1.append(bound1) # [(min, max), (min, max), (min, max), ..]
-                b2.append(bound2)
-                
-                boundseed += 1
-                
-            # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
-            # and now you need a way to reduce those lists of tuples
-            # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
-            minmax1 = list(zip(*b1)) # [(min, min, ..), (max, max, ..)]
-            minmax2 = list(zip(*b2)) # [(min, min, ..), (max, max, ..)]
-            mino1, maxo1 = np.percentile(minmax1[0], 5), np.percentile(minmax1[1], 95)
-            mino2, maxo2 = np.percentile(minmax2[0], 5), np.percentile(minmax2[1], 95)
-            self._bounds1, self._bounds2 = (mino1, maxo1), (mino2, maxo2)
-            print("  - bounds have been estimated..")
+                    print("  - autoencoder population was created..")
+
+                #############################################
+                #############################################
+                # ––– YOLO/classifier experiment (–>DV) –––
+                #############################################
+                #############################################
+                b1, b2 = [], []
+                print("\n* estimating fitness bounds..")
+                boundseed = self._current_seed + 100 if self._resume else self._seed + 100
+                for boundrun in range(self._bound_runs):
+                    print(f"  - bounds estimation round {boundrun}")
+                    self._set_seed(boundseed)
+
+                    evolver = NSGA2(
+                        pop_size=self._pop,
+                        model=self._model1,
+                        input_shape=self._input_shape,
+                        interval=self._interval,
+                        data=self._train,
+                        problem=self._problem,
+                        device=self._device
+                    )
+
+                    if self._prestep:
+                        evolver.transfer_popV2(autopop, self._model1, self._input_shape, self._classes) # ⛔️
+
+                    evolver.evolve(
+                        generations=self._bound_gens,
+                        bound_estimation=True,
+                        prestep=False,
+                        inter_r=self._inter_r,
+                        m_r=self._mutation_r,
+                        m_s=self._mutation_s,
+                        m_mode=self._m_mode
+                    )
+
+                    bound1 = evolver.get_bounds()[0] # (min, max) from one evo
+                    bound2 = evolver.get_bounds()[1] # # (min, max) from one evo
+                    b1.append(bound1) # [(min, max), (min, max), (min, max), ..]
+                    b2.append(bound2)
+                    
+                    boundseed += 1
+                    
+                # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
+                # and now you need a way to reduce those lists of tuples
+                # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
+                minmax1 = list(zip(*b1)) # [(min, min, ..), (max, max, ..)]
+                minmax2 = list(zip(*b2)) # [(min, min, ..), (max, max, ..)]
+                mino1, maxo1 = np.percentile(minmax1[0], 5), np.percentile(minmax1[1], 95)
+                mino2, maxo2 = np.percentile(minmax2[0], 5), np.percentile(minmax2[1], 95)
+                self._bounds1, self._bounds2 = (mino1, maxo1), (mino2, maxo2)
+                print("  - bounds have been estimated..")
             ########################################
             # –––– starting experimental runs –––––
             ########################################
 
-            evolver = nsga.NSGA2(
+            evolver = NSGA2(
                 pop_size=self._pop,
                 model=self._model1,
                 input_shape=self._input_shape,
@@ -1221,23 +1218,23 @@ class ExperimentV4():
             interval,
             seed,
             experiment_path,
-
             prestep=False,
             AEepochs=4,
-            classes=10,
+            
             bound_runs=2,
             bound_gens=2,
             evo_runs=2,
             evo_gens=2,
+
             intersp_cross_rate=0.01,
             mutation_strength=0.3,
             mutation_rate=0.1,
             mutation_mode="light",
             
-            checkpoint=True,
-            device=None,
             resume=False,
-            git=False
+            device=None,
+            git=False,
+            checkpoint=True
     ):
         self._model1 = model1
         self._model2 = model2
@@ -1245,7 +1242,6 @@ class ExperimentV4():
         # self._autopop = None # keep it for checkpoints!
         self._AEepochs = AEepochs
         self._dataset = dataset.lower()
-        self._classes = classes
         self._interval = interval
         self._problem = problem
         self._prestep = prestep
@@ -1274,7 +1270,7 @@ class ExperimentV4():
         self._experiment_path = experiment_path
 
         self._run = 0 # current run?
-        self._max_runs = None
+        self._runs = evo_runs
 
         self._best = None
         self._results = [{"dataset": self._dataset, # list of dictionaries 
@@ -1289,17 +1285,20 @@ class ExperimentV4():
 
     def _setup(self):
         if self._dataset == "mnist":
-            self._train = MNIST("./datasets", download=True, train=True, transform=transforms.ToTensor())
-            self._test = MNIST("./datasets", download=True, train=False, transform=transforms.ToTensor())
+            self._train = MNIST("./whole/datasets", download=True, train=True, transform=transforms.ToTensor())
+            self._test = MNIST("./whole/datasets", download=True, train=False, transform=transforms.ToTensor())
             self._input_shape = (1, 28, 28)
+            self._classes = 10
         elif self._dataset == "fashion":
-            self._train = FashionMNIST("./datasets", download=True, train=True, transform=transforms.ToTensor())
-            self._test = FashionMNIST("./datasets", download=True, train=False, transform=transforms.ToTensor())
+            self._train = FashionMNIST("./whole/datasets", download=True, train=True, transform=transforms.ToTensor())
+            self._test = FashionMNIST("./whole/datasets", download=True, train=False, transform=transforms.ToTensor())
             self._input_shape = (1, 28, 28)
+            self._classes = 10
         else:
-            self._train = CIFAR10("./datasets", download=True, train=True, transform=transforms.ToTensor())
-            self._test = CIFAR10("./datasets", download=True, train=False, transform=transforms.ToTensor())
+            self._train = CIFAR10("./whole/datasets", download=True, train=True, transform=transforms.ToTensor())
+            self._test = CIFAR10("./whole/datasets", download=True, train=False, transform=transforms.ToTensor())
             self._input_shape = (3, 32, 32)
+            self._classes = 10
         
         self._train_loader = DataLoader(self._train, batch_size=30)
         self._test_loader = DataLoader(self._test, batch_size=30)
@@ -1311,17 +1310,16 @@ class ExperimentV4():
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
     
+    
     def _checkpoint(self, filepath):
         with open(filepath, "w") as f:
             json.dump({
                 "results": self._results,
                 "bounds1": self._bounds1,
                 "bounds2": self._bounds2,
+                "prestep": self._prestep,
                 "run": self._run,
-                "seed": self._seed,
-                "max_runs": self._max_runs,
-                "current_seed": self._current_seed,
-                "prestep": self._prestep
+                "current_seed": self._current_seed
             }, f)
     
     def _load_checkpoint(self, checkpath):
@@ -1332,11 +1330,12 @@ class ExperimentV4():
         self._results = data["results"]
         self._bounds1 = data["bounds1"]
         self._bounds2 = data["bounds2"]
-        self._run = data["run"]
-        self._seed = data["seed"]
-        self._max_runs = data["max_runs"]
         self._current_seed = data["current_seed"]
         self._prestep = data["prestep"]
+        self._run = data["run"]
+        self._runs = data["results"][0]["runs"]
+        self._gens = data["results"][0]["gens"]
+        # self._seed = data["results"][0]["seed"] # don't need it on resume
 
     
     def _save_results(self, path):
@@ -1388,6 +1387,8 @@ class ExperimentV4():
         # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
         self._experiment_path.mkdir(parents=True, exist_ok=True)
         
+        self._setup()
+
         ###### if resume, load checkpoint ########
         if self._resume and self._experiment_path is not None:
             checkpoints = sorted(self._experiment_path.glob(f"checkpoint_*.json"))
@@ -1409,9 +1410,6 @@ class ExperimentV4():
             # sys.exit()
 
         else:
-            self._max_runs = self._evo_runs
-
-            self._setup()
             b1, b2 = [], [] # for each obj [(min, max), (min, max), ..] per boundrun
             print("\n* estimating fitness bounds..")
             boundseed = self._seed + 100
@@ -1436,7 +1434,7 @@ class ExperimentV4():
 
                     print("  - autoencoder population has been created..")
 
-                evolver = nsga.NSGA2(
+                evolver = NSGA2(
                     pop_size=self._pop,
                     model=self._model1,
                     input_shape=self._input_shape,
@@ -1484,7 +1482,7 @@ class ExperimentV4():
         print("\n* starting experimental runs..")
         seed = self._current_seed if self._resume else self._seed
         
-        for run in range(self._run, self._max_runs):
+        for run in range(self._run, self._runs):
             print(f"\n* initiating round {run}")
             self._set_seed(seed)
             
@@ -1508,7 +1506,7 @@ class ExperimentV4():
             # ––---–– starting evolution –––-––
             ########################################
 
-            evolver = nsga.NSGA2(
+            evolver = NSGA2(
                 pop_size=self._pop,
                 model=self._model1,
                 input_shape=self._input_shape,

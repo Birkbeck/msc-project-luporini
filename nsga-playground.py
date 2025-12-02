@@ -1,18 +1,20 @@
 import os
 from pathlib import Path
-from nsga import experiment as exp
-from nsga.models import TinyConvClassifier, TinyFlexyConvAE
+from whole.nsga import experiment as exp
+from whole.nsga.models import TinyConvClassifier, TinyFlexyConvAE
 import torch
 
-
+# ––––––––––––––––––––––––––––––
+# python -m whole.nsga.nsga #??????????
+# ––––––––––––––––––––––––––––––
 
 # –––––----- experiment details ––––––––––– #
 model1 = TinyConvClassifier # main model
 model2 = TinyFlexyConvAE # autoencoder for AE condition
 
 interval = [1, 4]
-
 pop = 5
+AEepochs = 4
 bound_runs = 2
 bound_gens = 2
 evo_runs = 3 # 'experiment' runs
@@ -23,10 +25,10 @@ mutation_strength = .2
 mutation_mode = "light"
 
 seed = 37
-resume = True # from checkpoint?
+resume = True # from checkpoint.. set True ONLY IF CHECKPOINT EXISTS!!!
 mydevice = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 git = False
-checkpoint = True
+checkpoint = False
 
 dataset = "mnist" # mnist, cifar, fashion
 problem = "classification"
@@ -53,7 +55,7 @@ else:
     basedir = cwd
 
 print(os.getcwd())
-basepath = basedir / "tests" / f"{dataset}" / f"{condition}"
+basepath = basedir / "whole" / "tests" / f"{dataset}" / f"{condition}"
 
 basepath.mkdir(parents=True, exist_ok=True)
 
@@ -66,18 +68,23 @@ workflow = exp.ExperimentV4(
     pop=pop,
     dataset=dataset,
     problem=problem,
+    interval=interval,
+    seed=seed,
+    experiment_path=basepath,
+    prestep=prestep, # autoencoder condition?
+    AEepochs=AEepochs,
+
     bound_runs=bound_runs,
     bound_gens=bound_gens,
     evo_runs=evo_runs,
     evo_gens=evo_gens,
-    prestep=prestep, # autoencoder condition?
+    
     intersp_cross_rate=interspecies_r,
     mutation_rate=mutation_rate,
     mutation_strength=mutation_strength,
     mutation_mode=mutation_mode,
-    interval=interval,
-    seed=seed,
-    experiment_path=basepath,
+    
+    
     resume=resume, # from checkpoint?
     device=mydevice,
     git=git,
