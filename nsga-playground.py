@@ -96,7 +96,7 @@ workflow = exp.ExperimentV4(
 workflow.run()
 
 
-print("\nexperiment's over.. g'byeeee")
+print("\nexperiment's over!")
 
 # results = workflow.get_results()
         
