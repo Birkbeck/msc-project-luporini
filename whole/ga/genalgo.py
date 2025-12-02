@@ -172,6 +172,7 @@ class GAExperiment():
             stride,
             pop,
             dataset,
+            subset_fraction,
             problem,
             seed,
             experiment_path,
@@ -194,6 +195,7 @@ class GAExperiment():
         self._stride = stride
         self._pop = pop
         self._dataset = dataset
+        self._subset_fraction = subset_fraction
         self._problem = problem
         self._seed = seed
         self._path = experiment_path
@@ -326,7 +328,7 @@ class GAExperiment():
             
             evolver.evolve(
                 generations=self._gens,
-                subset_fraction=0.07,
+                subset_fraction=self._subset_fraction,
                 m_r_min=self._m_r_min,
                 m_r_max=self._m_r_max,
                 m_r_decay = self._decay,

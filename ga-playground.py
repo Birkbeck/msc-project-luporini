@@ -8,15 +8,16 @@ from whole.ga.models import TinyFlexyConvAE, TinyConvClassifier, create_AE_pop
 import whole.ga.genalgo as gen
 
 
-train = MNIST("./whole/datasets", download=True, train=True, transform=ToTensor())
-test = MNIST("./whole/datasets", download=True, train=False, transform=ToTensor())
-train_loader = DataLoader(train, batch_size=30, shuffle=True)
+# train = MNIST("./whole/datasets", download=True, train=True, transform=ToTensor())
+# test = MNIST("./whole/datasets", download=True, train=False, transform=ToTensor())
+# train_loader = DataLoader(train, batch_size=30, shuffle=True)
 
 autoencoder = TinyFlexyConvAE
 classifier = TinyConvClassifier
 stride = 2
 pop = 10
-dataset = "mnist"
+dataset = "fashion"
+subset_fraction = 0.2  # have used 0.07 so far.. 
 problem = "classification"
 seed = 34
 AEepochs = 4
@@ -30,10 +31,10 @@ mutation_strength = 0.2
 mutation_mode = "light"
 my_device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 resume = False
-checkpoint = True
+checkpoint = False
 
 
-prestep = True 
+prestep = False 
 if prestep:
     condition = "AE"
 else:
@@ -64,6 +65,7 @@ workflow = gen.GAExperiment(
     stride=stride,
     pop=pop,
     dataset=dataset,
+    subset_fraction=subset_fraction,
     problem=problem,
     seed=seed,
     experiment_path=basepath,
