@@ -7,6 +7,7 @@ from torchvision.transforms import ToTensor
 from whole.ga.models import TinyFlexyConvAE, TinyConvClassifier, create_AE_pop
 import whole.ga.genalgo as gen
 
+
 train = MNIST("./whole/datasets", download=True, train=True, transform=ToTensor())
 test = MNIST("./whole/datasets", download=True, train=False, transform=ToTensor())
 train_loader = DataLoader(train, batch_size=30, shuffle=True)
