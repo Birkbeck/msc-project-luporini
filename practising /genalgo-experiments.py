@@ -29,10 +29,10 @@ mutation_strength = 0.2
 mutation_mode = "light"
 my_device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 resume = False
-checkpoint = False
+checkpoint = True
 
 
-prestep = False 
+prestep = True 
 if prestep:
     condition = "AE"
 else:
