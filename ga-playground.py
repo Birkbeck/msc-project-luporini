@@ -4,41 +4,37 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
-from whole.ga.models import TinyFlexyConvAE, TinyConvClassifier, create_AE_pop
+from whole.ga.models import TinyFlexyConvAE, TinyConvClassifier
 import whole.ga.genalgo as gen
 
 
-# train = MNIST("./whole/datasets", download=True, train=True, transform=ToTensor())
-# test = MNIST("./whole/datasets", download=True, train=False, transform=ToTensor())
-# train_loader = DataLoader(train, batch_size=30, shuffle=True)
+dataset = "fashion"
+problem = "classification"
+classes = 10
+subset_fraction = 0.2  # have used 0.07 so far.. ⛔️ 
+
+prestep = False 
+condition = "AE "if prestep else "noAE"
 
 autoencoder = TinyFlexyConvAE
 classifier = TinyConvClassifier
 stride = 2
 pop = 10
-dataset = "fashion"
-subset_fraction = 0.2  # have used 0.07 so far.. ⛔️ 
-problem = "classification"
-seed = 34
 AEepochs = 4
-classes = 10
 runs = 30
 gens = 30
+
 mutation_rate_min = 0.01
 mutation_rate_max = 0.2
 mutations_rate_decay = True
 mutation_strength = 0.2
 mutation_mode = "light"
+seed = 34
+
 my_device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-resume = False
-checkpoint = False
+resume = False # set true ONLY IF CHECKPOINT_SAVE EXISTS
+checkpoint = False 
 
-
-prestep = False 
-if prestep:
-    condition = "AE"
-else:
-    condition = "noAE"
 
 
 # --------- file management -------- #

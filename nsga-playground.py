@@ -9,9 +9,13 @@ import torch
 # ––––––––––––––––––––––––––––––
 
 # –––––----- experiment details ––––––––––– #
+dataset = "mnist" # mnist, cifar, fashion
+problem = "classification"
+prestep = False 
+condition = "AE" if prestep else "noAE"
+
 model1 = TinyConvClassifier # main model
 model2 = TinyFlexyConvAE # autoencoder for AE condition
-
 interval = [1, 4]
 pop = 5
 AEepochs = 4
@@ -19,26 +23,18 @@ bound_runs = 2
 bound_gens = 2
 evo_runs = 3 # 'experiment' runs
 evo_gens = 5
+
 interspecies_r = 0.1 
 mutation_rate = .78 # stay between 0.1% - 1%
 mutation_strength = .2 
 mutation_mode = "light"
-
 seed = 37
-resume = True # from checkpoint.. set True ONLY IF CHECKPOINT EXISTS!!!
+
+resume = True # from checkpoint.. set True ONLY IF CHECKPOINT_SAVE EXISTS
 mydevice = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 git = False
 checkpoint = False
 
-dataset = "mnist" # mnist, cifar, fashion
-problem = "classification"
-
-# enable AE condition?
-prestep = False 
-if prestep:
-    condition = "AE"
-else:
-    condition = "noAE"
 
 
 print(os.getcwd())
