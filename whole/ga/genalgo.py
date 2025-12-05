@@ -136,7 +136,9 @@ class GeneticAlgorithmV2():
             else:
                 print(f"{gen} gen | avg. population fitness: {self._avg_fitness()}")
 
-    def test(self, fraction):
+    def test(self, fraction, ensemble=False):
+        voting_acc = None
+
         full_idxs = list(range(len(self._test_data)))
         if isinstance(self._test_data.targets, torch.Tensor):
             labels = self._test_data.targets.numpy()
@@ -147,6 +149,32 @@ class GeneticAlgorithmV2():
         test_subset = Subset(self._test_data, indices=test_indices)
         test_loader = DataLoader(test_subset, batch_size=30)
         
+        if ensemble:
+            
+            preds = []
+            truth = []
+            
+            for X, y in test_loader:
+                X = X.to(next(self._population[0].parameters()).device)
+                y = y.to(X.device)
+
+                batch = []
+
+                for m in self._population:
+                    m.eval()
+                    with torch.no_grad():
+                        logits = m(X)
+                        pred = torch.argmax(logits, dim=1)
+                        batch.append(pred.unsqueeze(0))
+                votes = torch.cat(batch, dim=0)
+                final = torch.mode(votes, dim=0).values
+                preds.append(final)
+                truth.append(y)
+            
+            preds, truth = torch.cat(preds), torch.cat(truth)
+            voting_acc = (preds == truth).float().mean().item()
+
+        
         test_fit_fn = model_fitness(test_loader, self._problem)
         test_fitnesses = group_fitness( # clamped within emp_bounds
             self._population, test_fit_fn
@@ -154,7 +182,7 @@ class GeneticAlgorithmV2():
 
         avg_test_fitness = sum(test_fitnesses) / len(test_fitnesses)
 
-        return avg_test_fitness
+        return avg_test_fitness, voting_acc
 
 
     def extract_best(self, k=1):
@@ -208,6 +236,7 @@ class GAExperiment():
             mutation_rate_decay=True,
             mutation_strength=0.2,
             mutation_mode="light",
+            ensemble=False,
             my_device=torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"),
             resume=False,
             checkpoint=True
@@ -234,6 +263,8 @@ class GAExperiment():
         
         self._run = 0
         self._current_seed = None
+
+        self._ensemble = ensemble
 
         self._device = my_device
         self._resume = resume
@@ -361,8 +392,8 @@ class GAExperiment():
             )
 
             # test evolution on unseen data
-            avg_test_fit = evolver.test(self._subset_fraction)
-            print(f"avg test accuracy: {avg_test_fit}")
+            avg_test_fit, avg_ensemble_fit = evolver.test(self._subset_fraction, ensemble=self._ensemble)
+            print(f"avg test accuracy: {avg_test_fit} | ensemble test accuracy: {avg_ensemble_fit}")
 
             # extract avg fit through gens
             fitintime = evolver.get_fitintime() # list of avg.fits

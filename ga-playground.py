@@ -31,6 +31,8 @@ mutation_strength = 0.2
 mutation_mode = "light"
 seed = 34
 
+ensemble = True
+
 my_device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 resume = False # set true ONLY IF CHECKPOINT_SAVE EXISTS
 checkpoint = False 
@@ -75,6 +77,7 @@ workflow = gen.GAExperiment(
     mutation_rate_decay=mutations_rate_decay,
     mutation_strength=mutation_strength,
     mutation_mode=mutation_mode,
+    ensemble=ensemble,
     my_device=my_device,
     resume=resume,
     checkpoint=checkpoint
