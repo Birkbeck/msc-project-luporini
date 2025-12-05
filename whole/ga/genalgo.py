@@ -26,14 +26,16 @@ class GeneticAlgorithmV2():
             model, # instance!!!
             population,
             pop_size,
-            data,
+            train_data,
+            test_data,
             problem="AE",
             device=torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     ):
         self._model = model
         self._pop_size = pop_size # ⁉️need it⁉️
         self._fit_fn = None
-        self._data = data
+        self._train_data = train_data
+        self._test_data = test_data
         self._population = [deepcopy(model.to(device)) for i in range(self._pop_size)] if population else None
         self._fitnesses = [None for i in range(self._pop_size)]
         self._avgfitness = [] # per generation
@@ -45,18 +47,18 @@ class GeneticAlgorithmV2():
         produces train and val loaders
         val_loader_size < train_loader_size
         """
-        full_idxs = list(range(len(self._data)))
-        if isinstance(self._data.targets, torch.Tensor):
-            labels = self._data.targets.numpy()
-        elif isinstance(self._data.targets, list):
-            labels = np.array(self._data.targets)  #need np.arrays for stratify
+        full_idxs = list(range(len(self._train_data)))
+        if isinstance(self._train_data.targets, torch.Tensor):
+            labels = self._train_data.targets.numpy()
+        elif isinstance(self._train_data.targets, list):
+            labels = np.array(self._train_data.targets)  #need np.arrays for stratify
             
         train_indices, remaining = train_test_split(full_idxs, train_size=fraction, stratify=labels)
-        train_subset = Subset(self._data, indices=train_indices)
+        train_subset = Subset(self._train_data, indices=train_indices)
 
         remaining_labels = labels[remaining]
         val_indices, _ = train_test_split(remaining, train_size=0.5, stratify=remaining_labels)
-        val_subset = Subset(self._data, indices=val_indices)
+        val_subset = Subset(self._train_data, indices=val_indices)
 
 
         train_loader = DataLoader(
@@ -133,7 +135,27 @@ class GeneticAlgorithmV2():
                 print(f"{gen} gen | avg. population acc: {self._avg_fitness()}")
             else:
                 print(f"{gen} gen | avg. population fitness: {self._avg_fitness()}")
+
+    def test(self, fraction):
+        full_idxs = list(range(len(self._test_data)))
+        if isinstance(self._test_data.targets, torch.Tensor):
+            labels = self._test_data.targets.numpy()
+        elif isinstance(self._test_data.targets, list):
+            labels = np.array(self._test_data.targets)  #need np.arrays for stratify
             
+        test_indices, _ = train_test_split(full_idxs, train_size=fraction, stratify=labels)
+        test_subset = Subset(self._test_data, indices=test_indices)
+        test_loader = DataLoader(test_subset, batch_size=30)
+        
+        test_fit_fn = model_fitness(test_loader, self._problem)
+        test_fitnesses = group_fitness( # clamped within emp_bounds
+            self._population, test_fit_fn
+        )
+
+        avg_test_fitness = sum(test_fitnesses) / len(test_fitnesses)
+
+        return avg_test_fitness
+
 
     def extract_best(self, k=1):
         zipped = list(zip(self._population, self._fitnesses))
@@ -241,7 +263,7 @@ class GAExperiment():
             self._input_shape = (3, 32, 32)
         
         self._train_loader = DataLoader(self._train, batch_size=30)
-        self._test_loader = DataLoader(self._test, batch_size=30)
+        # self._test_loader = DataLoader(self._test, batch_size=30)
     
 
     def _set_seed(self, seed):
@@ -299,7 +321,8 @@ class GAExperiment():
         print(f"\n* starting experiment. AE condition: {self._prestep}")
         
         for run in range(self._run, self._runs):
-            print(f"  - run {run}")
+            if self._runs > 1:
+                print(f"  - run {run}")
             self._set_seed(seed)
 
             if self._prestep:
@@ -318,6 +341,7 @@ class GAExperiment():
                 True,
                 self._pop,
                 self._train, # requires raw set to pass to _trainval_loaders...
+                self._test,
                 problem=self._problem
             )
             
@@ -336,10 +360,13 @@ class GAExperiment():
                 mode=self._m_mode
             )
 
-            # extract results
+            # test evolution on unseen data
+            avg_test_fit = evolver.test(self._subset_fraction)
+            print(f"avg test accuracy: {avg_test_fit}")
+
+            # extract avg fit through gens
             fitintime = evolver.get_fitintime() # list of avg.fits
-            finalfit = fitintime[-1] # lat gen's fit
-            result = {"fit_in_time": fitintime, "finalfit":finalfit}
+            result = {"fit_in_time": fitintime, "test_fit": avg_test_fit}
             self._results.append(result)
 
             # update run and seed for checkpointing

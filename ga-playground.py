@@ -11,7 +11,7 @@ import whole.ga.genalgo as gen
 dataset = "fashion"
 problem = "classification"
 classes = 10
-subset_fraction = 0.2  # have used 0.07 so far.. ⛔️ 
+subset_fraction = 0.3  # have used 0.07 so far.. ⛔️ 
 
 prestep = False 
 condition = "AE "if prestep else "noAE"
@@ -21,8 +21,8 @@ classifier = TinyConvClassifier
 stride = 2
 pop = 10
 AEepochs = 4
-runs = 30
-gens = 30
+runs = 1
+gens = 20
 
 mutation_rate_min = 0.01
 mutation_rate_max = 0.2
