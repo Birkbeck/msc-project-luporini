@@ -137,6 +137,7 @@ class GeneticAlgorithmV2():
                 print(f"{gen} gen | avg. population fitness: {self._avg_fitness()}")
 
     def test(self, fraction, ensemble=False):
+        """ return avg_test_fitness, voting_acc """
         voting_acc = None
 
         full_idxs = list(range(len(self._test_data)))
@@ -154,9 +155,10 @@ class GeneticAlgorithmV2():
             preds = []
             truth = []
             
+            device = next(self._population[0].parameters()).device
             for X, y in test_loader:
-                X = X.to(next(self._population[0].parameters()).device)
-                y = y.to(X.device)
+                X = X.to(device)
+                y = y.to(device)
 
                 batch = []
 
@@ -164,7 +166,7 @@ class GeneticAlgorithmV2():
                     m.eval()
                     with torch.no_grad():
                         logits = m(X)
-                        pred = torch.argmax(logits, dim=1)
+                        pred = torch.argmax(logits, dim=1) # shape (batch, classes) ~ (30, 10)
                         batch.append(pred.unsqueeze(0))
                 votes = torch.cat(batch, dim=0)
                 final = torch.mode(votes, dim=0).values
@@ -393,7 +395,10 @@ class GAExperiment():
 
             # test evolution on unseen data
             avg_test_fit, avg_ensemble_fit = evolver.test(self._subset_fraction, ensemble=self._ensemble)
-            print(f"avg test accuracy: {avg_test_fit} | ensemble test accuracy: {avg_ensemble_fit}")
+            if self._ensemble:
+                print(f"avg test accuracy: {avg_test_fit} | ensemble test accuracy: {avg_ensemble_fit}")
+            else:
+                print(f"avg test accuracy: {avg_test_fit}")
 
             # extract avg fit through gens
             fitintime = evolver.get_fitintime() # list of avg.fits

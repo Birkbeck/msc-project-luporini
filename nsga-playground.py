@@ -17,7 +17,7 @@ condition = "AE" if prestep else "noAE"
 model1 = TinyConvClassifier # main model
 model2 = TinyFlexyConvAE # autoencoder for AE condition
 interval = [1, 4]
-pop = 5
+pop = 10
 AEepochs = 4
 bound_runs = 2
 bound_gens = 2
@@ -30,7 +30,7 @@ mutation_strength = .2
 mutation_mode = "light"
 seed = 37
 
-resume = True # from checkpoint.. set True ONLY IF CHECKPOINT_SAVE EXISTS
+resume = False # from checkpoint.. set True ONLY IF CHECKPOINT_SAVE EXISTS
 mydevice = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 git = False
 checkpoint = False

@@ -1,9 +1,6 @@
 from pathlib import Path
 import os
 import torch
-from torch.utils.data import DataLoader
-from torchvision.datasets import MNIST
-from torchvision.transforms import ToTensor
 from whole.ga.models import TinyFlexyConvAE, TinyConvClassifier
 import whole.ga.genalgo as gen
 
@@ -21,8 +18,9 @@ classifier = TinyConvClassifier
 stride = 2
 pop = 10
 AEepochs = 4
-runs = 1
+runs = 10
 gens = 20
+ensemble = True
 
 mutation_rate_min = 0.01
 mutation_rate_max = 0.2
@@ -30,8 +28,6 @@ mutations_rate_decay = True
 mutation_strength = 0.2
 mutation_mode = "light"
 seed = 34
-
-ensemble = True
 
 my_device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 resume = False # set true ONLY IF CHECKPOINT_SAVE EXISTS
