@@ -275,10 +275,16 @@ class GAExperiment():
         self._results = [ # list of dictionaries
             {"dataset": self._dataset, # this is the first one, basic info
              "pop_size": self._pop, 
-             "evo_runs": self._runs,
-             "evo_gens": self._gens,
+             "runs": self._runs,
+             "gens": self._gens,
              "exp_condition": self._prestep,
-             "seed": self._seed}
+             "seed": self._seed,
+             "subset_fraction": self._subset_fraction,
+             "decay": self._decay,
+             "m_r_min": self._m_r_min,
+             "m_r_max": self._m_r_max,
+             "m_strength": self._m_strength,
+             "m_mode": self._m_mode}
         ]
     
     def _setup(self):
