@@ -5,7 +5,7 @@ from whole.ga.models import TinyFlexyConvAE, TinyConvClassifier
 import whole.ga.genalgo as gen
 
 
-dataset = "fashion"
+dataset = "kmnist"
 problem = "classification"
 classes = 10
 subset_fraction = 0.3  # have used 0.07 so far.. ⛔️ 
@@ -18,8 +18,8 @@ classifier = TinyConvClassifier
 stride = 2
 pop = 10
 AEepochs = 4
-runs = 10
-gens = 20
+runs = 3
+gens = 5
 ensemble = True
 
 mutation_rate_min = 0.01

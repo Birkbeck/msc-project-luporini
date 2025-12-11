@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 
 import torch
 from torch.utils.data import Subset, DataLoader
-from torchvision.datasets import MNIST, FashionMNIST, CIFAR10
+from torchvision.datasets import MNIST, FashionMNIST, CIFAR10, KMNIST, EMNIST
 from torchvision.transforms import ToTensor
 
 from .models import create_AE_pop
@@ -288,18 +288,17 @@ class GAExperiment():
         ]
     
     def _setup(self):
-        if self._dataset == "mnist":
-            self._test = MNIST("./whole/datasets", download=True, train=False, transform=ToTensor())
-            self._train = MNIST("./whole/datasets", download=True, train=True, transform=ToTensor())
-            self._input_shape = (1, 28, 28)
-        elif self._dataset == "fashion":
-            self._train = FashionMNIST("./whole/datasets", download=True, train=True, transform=ToTensor())
-            self._test = FashionMNIST("./whole/datasets", download=True, train=False, transform=ToTensor())
-            self._input_shape = (1, 28, 28)
-        else:
-            self._train = CIFAR10("./whole/datasets", download=True, train=True, transform=ToTensor())
-            self._test = CIFAR10("./whole/datasets", download=True, train=False, transform=ToTensor())
-            self._input_shape = (3, 32, 32)
+        datasets = {"mnist": [MNIST, (1, 28, 28)],
+                    "kmnist": [KMNIST, (1, 28, 28)],
+                    "fashion": [FashionMNIST, (1, 28, 28)],
+                    "cifar": [CIFAR10, (3, 32, 32)]}
+        
+        dataset = datasets[self._dataset][0]
+        shape = datasets[self._dataset][1]
+        self._test = dataset("./whole/datasets", download=True, train=False, transform=ToTensor())
+        self._train = dataset("./whole/datasets", download=True, train=True, transform=ToTensor())
+        self._input_shape = shape
+        
         
         self._train_loader = DataLoader(self._train, batch_size=30)
         # self._test_loader = DataLoader(self._test, batch_size=30)
