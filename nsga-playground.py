@@ -23,13 +23,15 @@ AEepochs = 4
 bound_runs = 2
 bound_gens = 2
 evo_runs = 3 # 'experiment' runs
-evo_gens = 5
+evo_gens = 3
 
+seed = 34
 interspecies_r = 0.1 
-mutation_rate = .78 # stay between 0.1% - 1%
-mutation_strength = .2 
+mutation_rate_min = 0.01
+mutation_rate_max = 0.3
+mutation_rate_decay = True
+mutation_strength = 0.2
 mutation_mode = "light"
-seed = 37
 
 resume = False # from checkpoint.. set True ONLY IF CHECKPOINT_SAVE EXISTS
 mydevice = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -78,7 +80,9 @@ workflow = exp.ExperimentV4(
     evo_gens=evo_gens,
     
     intersp_cross_rate=interspecies_r,
-    mutation_rate=mutation_rate,
+    mutation_rate_min=mutation_rate_min,
+    mutation_rate_max=mutation_rate_max,
+    mutation_rate_decay=mutation_rate_decay,
     mutation_strength=mutation_strength,
     mutation_mode=mutation_mode,
     

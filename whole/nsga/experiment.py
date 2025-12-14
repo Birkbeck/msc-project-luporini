@@ -1228,8 +1228,10 @@ class ExperimentV4():
             evo_gens=2,
 
             intersp_cross_rate=0.01,
-            mutation_strength=0.3,
-            mutation_rate=0.1,
+            mutation_rate_min=0.01,
+            mutation_rate_max=0.2,
+            mutation_rate_decay=True,
+            mutation_strength=0.2,
             mutation_mode="light",
             ensemble=False,
             
@@ -1254,8 +1256,10 @@ class ExperimentV4():
         self._check = checkpoint
 
         self._inter_r = intersp_cross_rate
+        self._m_r_min = mutation_rate_min
+        self._m_r_max = mutation_rate_max
+        self._decay = mutation_rate_decay
         self._mutation_s = mutation_strength
-        self._mutation_r = mutation_rate
         self._m_mode = mutation_mode
         self._ensemble = ensemble
         
@@ -1474,7 +1478,9 @@ class ExperimentV4():
                     prestep=False,
                     subset_fraction=self._subset_fraction,
                     inter_r=self._inter_r,
-                    m_r=self._mutation_r,
+                    m_r_min=self._m_r_min,
+                    m_r_max=self._m_r_max,
+                    m_r_decay = self._decay,
                     m_s=self._mutation_s,
                     m_mode=self._m_mode
                 )
@@ -1554,7 +1560,9 @@ class ExperimentV4():
                 prestep=False,
                 subset_fraction=self._subset_fraction,
                 inter_r=self._inter_r,
-                m_r=self._mutation_r,
+                m_r_min=self._m_r_min,
+                m_r_max=self._m_r_max,
+                m_r_decay = self._decay,
                 m_s=self._mutation_s,
                 m_mode=self._m_mode
             )
@@ -1570,11 +1578,11 @@ class ExperimentV4():
             ##################################
             # extract results: conv + spread + test_acc
             #################################
-            avg_test_fit, avg_ensemble_fit = evolver.test(self._subset_fraction, ensemble=self._ensemble)
+            avg_test_fit_1, avg_test_fit_2, avg_ensemble_fit = evolver.test(self._subset_fraction, ensemble=self._ensemble)
             if self._ensemble:
-                print(f"avg test accuracy: {avg_test_fit} | ensemble test accuracy: {avg_ensemble_fit}")
+                print(f"avg test accuracy: {avg_test_fit_1} | ensemble test accuracy: {avg_ensemble_fit}")
             else:
-                print(f"avg test accuracy: {avg_test_fit}")
+                print(f"avg test accuracy: {avg_test_fit_1}")
             
             val_fitnesses = evolver.get_val_fitness()
             best_front = evolver.get_best_front() # (fits1, fits2) (plot)
@@ -1587,7 +1595,8 @@ class ExperimentV4():
 
             result = { # save LAST POP IN NORMALISED? FITNESS SPACE ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
                 # (fitnesses1, fitnesses2, strides~colour)
-                "test_fit": avg_test_fit,
+                "test_fit_1": avg_test_fit_1,
+                "test_fit_2": avg_test_fit_2,
                 "val_fits": val_fitnesses, # list of avg. pop val_fitness per gen
                 "ensemble_fit"
                 "empirical_bounds": [self._bounds1, self._bounds2], # also plot????

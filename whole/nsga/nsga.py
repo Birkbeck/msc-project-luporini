@@ -405,11 +405,13 @@ class NSGA2():
             generations=0,
             subset_fraction=0.07,
             inter_r=0.01,
-            m_r=0.1,
+            m_r_min=0.01,
+            m_r_max=0.2,
+            m_r_decay = True,
             m_s=0.3,
+            power=2,
             m_mode="small"
     ):
-        
         for gen in range(generations):
 
             train_loader, val_loader = self._trainval_loaders(subset_fraction)
@@ -428,6 +430,9 @@ class NSGA2():
             if gen == 0:
                 self._initialise_islands()
             ################################################
+
+            if m_r_decay:
+                m_r = m_r_min + (m_r_max - m_r_min)*(1 - (gen/(generations - 1))**power)
 
             # mating events, either within(more likely) or between(less likely)
             children = [] # TOURNAMENT 🔥
@@ -633,12 +638,18 @@ class NSGA2():
             preds, truth = torch.cat(preds), torch.cat(truth)
             voting_acc = (preds == truth).float().mean().item()
 
-        
-        test_fit_fn = model_fitness(test_loader, self._problem)
-        test_fitnesses = group_fitness( # clamped within emp_bounds
-            self._population, test_fit_fn
+
+        fit_fn_1 = self._fit_fn_1(test_loader, self._problem)
+        fit_fn_2 = self._fit_fn_2(test_loader)
+
+        test_fitnesses_1 = group_fitness( # clamped within emp_bounds
+            self._population, fit_fn_1, self._emp_bounds_1
+        )
+        test_fitnesses_2 = group_fitness( # clamped within emp_bounds
+            self._population, fit_fn_2, self._emp_bounds_2
         )
 
-        avg_test_fitness = sum(test_fitnesses) / len(test_fitnesses)
+        avg_test_fitness_1 = sum(test_fitnesses_1) / len(test_fitnesses_1)
+        avg_test_fitness_2 = sum(test_fitnesses_2) / len(test_fitnesses_2)
 
-        return avg_test_fitness, voting_acc
+        return avg_test_fitness_1, avg_test_fitness_2, voting_acc
