@@ -130,14 +130,16 @@ class NSGA2():
             self,
             pop_size,
             model,
-            data,
+            train_data,
+            test_data,
             input_shape=(1, 28, 28),
             interval=[1, 4], # small interval compared to pop_size? ⛔️ representativeness
             problem="AE",
             device=None
     ):
         self._islands = None
-        self._data = data
+        self._train_data = train_data
+        self._test_data = test_data
         self._input_shape = input_shape
         self._model = model # needs to be a class, not an istance!
         self._problem = problem
@@ -199,17 +201,17 @@ class NSGA2():
         val_loader_size < train_loader_size
         """
         full_idxs = list(range(len(self._data)))
-        if isinstance(self._data.targets, torch.Tensor):
-            labels = self._data.targets.numpy()
-        elif isinstance(self._data.targets, list):
-            labels = np.array(self._data.targets)  #need np.arrays for stratify
+        if isinstance(self._train_data.targets, torch.Tensor):
+            labels = self._train_data.targets.numpy()
+        elif isinstance(self._train_data.targets, list):
+            labels = np.array(self._train_data.targets)  #need np.arrays for stratify
             
         train_indices, remaining = train_test_split(full_idxs, train_size=fraction, stratify=labels)
-        train_subset = Subset(self._data, indices=train_indices)
+        train_subset = Subset(self._train_data, indices=train_indices)
 
         remaining_labels = labels[remaining]
         val_indices, _ = train_test_split(remaining, train_size=0.5, stratify=remaining_labels)
-        val_subset = Subset(self._data, indices=val_indices)
+        val_subset = Subset(self._train_data, indices=val_indices)
 
 
         train_loader = DataLoader(
@@ -589,3 +591,54 @@ class NSGA2():
         # during selection is done adding fronts in order!!!
         if not prestep and not bound_estimation:
             self._best_front = (normalised_1, normalised_2)
+    
+    
+    def test(self, fraction, ensemble=False):
+        """ return avg_test_fitness, voting_acc """
+        voting_acc = None
+
+        full_idxs = list(range(len(self._test_data)))
+        if isinstance(self._test_data.targets, torch.Tensor):
+            labels = self._test_data.targets.numpy()
+        elif isinstance(self._test_data.targets, list):
+            labels = np.array(self._test_data.targets)  #need np.arrays for stratify
+            
+        test_indices, _ = train_test_split(full_idxs, train_size=fraction, stratify=labels)
+        test_subset = Subset(self._test_data, indices=test_indices)
+        test_loader = DataLoader(test_subset, batch_size=30)
+        
+        if ensemble:
+            
+            preds = []
+            truth = []
+            
+            device = next(self._population[0].parameters()).device
+            for X, y in test_loader:
+                X = X.to(device)
+                y = y.to(device)
+
+                batch = []
+
+                for m in self._population:
+                    m.eval()
+                    with torch.no_grad():
+                        logits = m(X)
+                        pred = torch.argmax(logits, dim=1) # shape (batch, classes) ~ (30, 10)
+                        batch.append(pred.unsqueeze(0))
+                votes = torch.cat(batch, dim=0)
+                final = torch.mode(votes, dim=0).values
+                preds.append(final)
+                truth.append(y)
+            
+            preds, truth = torch.cat(preds), torch.cat(truth)
+            voting_acc = (preds == truth).float().mean().item()
+
+        
+        test_fit_fn = model_fitness(test_loader, self._problem)
+        test_fitnesses = group_fitness( # clamped within emp_bounds
+            self._population, test_fit_fn
+        )
+
+        avg_test_fitness = sum(test_fitnesses) / len(test_fitnesses)
+
+        return avg_test_fitness, voting_acc
