@@ -1287,7 +1287,7 @@ class ExperimentV4():
                           "bound_gens": self._bound_gens,
                           "evo_runs": self._evo_runs,
                           "evo_gens": self._evo_gens,
-                          "exp_condition": self._exp_condition,
+                          "prestep": self._prestep,
                           "interval": self._interval,
                           "seed": self._seed}] # then, one per gen
 
