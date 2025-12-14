@@ -11,7 +11,7 @@ from .models import create_AE_pop
 
 from torchvision import transforms
 from torch.utils.data import DataLoader
-from torchvision.datasets import MNIST, FashionMNIST, CIFAR10
+from torchvision.datasets import MNIST, FashionMNIST, CIFAR10, KMNIST
 
 # class Experiment():
 #     def __init__(
@@ -1214,6 +1214,7 @@ class ExperimentV4():
             model2, # AE
             pop,
             dataset,
+            subset_fraction,
             problem,
             interval,
             seed,
@@ -1230,6 +1231,7 @@ class ExperimentV4():
             mutation_strength=0.3,
             mutation_rate=0.1,
             mutation_mode="light",
+            ensemble=False,
             
             resume=False,
             device=None,
@@ -1242,6 +1244,7 @@ class ExperimentV4():
         # self._autopop = None # keep it for checkpoints!
         self._AEepochs = AEepochs
         self._dataset = dataset.lower()
+        self._subset_fraction = subset_fraction
         self._interval = interval
         self._problem = problem
         self._prestep = prestep
@@ -1254,6 +1257,7 @@ class ExperimentV4():
         self._mutation_s = mutation_strength
         self._mutation_r = mutation_rate
         self._m_mode = mutation_mode
+        self._ensemble = ensemble
         
         self._bound_runs = bound_runs
         self._bound_gens = bound_gens
@@ -1283,25 +1287,41 @@ class ExperimentV4():
                           "interval": self._interval,
                           "seed": self._seed}] # then, one per gen
 
+    # def _setup(self):
+    #     if self._dataset == "mnist":
+    #         self._train = MNIST("./whole/datasets", download=True, train=True, transform=transforms.ToTensor())
+    #         self._test = MNIST("./whole/datasets", download=True, train=False, transform=transforms.ToTensor())
+    #         self._input_shape = (1, 28, 28)
+    #         self._classes = 10
+    #     elif self._dataset == "fashion":
+    #         self._train = FashionMNIST("./whole/datasets", download=True, train=True, transform=transforms.ToTensor())
+    #         self._test = FashionMNIST("./whole/datasets", download=True, train=False, transform=transforms.ToTensor())
+    #         self._input_shape = (1, 28, 28)
+    #         self._classes = 10
+    #     else:
+    #         self._train = CIFAR10("./whole/datasets", download=True, train=True, transform=transforms.ToTensor())
+    #         self._test = CIFAR10("./whole/datasets", download=True, train=False, transform=transforms.ToTensor())
+    #         self._input_shape = (3, 32, 32)
+    #         self._classes = 10
+        
+    #     self._train_loader = DataLoader(self._train, batch_size=30)
+    #     self._test_loader = DataLoader(self._test, batch_size=30)
+
     def _setup(self):
-        if self._dataset == "mnist":
-            self._train = MNIST("./whole/datasets", download=True, train=True, transform=transforms.ToTensor())
-            self._test = MNIST("./whole/datasets", download=True, train=False, transform=transforms.ToTensor())
-            self._input_shape = (1, 28, 28)
-            self._classes = 10
-        elif self._dataset == "fashion":
-            self._train = FashionMNIST("./whole/datasets", download=True, train=True, transform=transforms.ToTensor())
-            self._test = FashionMNIST("./whole/datasets", download=True, train=False, transform=transforms.ToTensor())
-            self._input_shape = (1, 28, 28)
-            self._classes = 10
-        else:
-            self._train = CIFAR10("./whole/datasets", download=True, train=True, transform=transforms.ToTensor())
-            self._test = CIFAR10("./whole/datasets", download=True, train=False, transform=transforms.ToTensor())
-            self._input_shape = (3, 32, 32)
-            self._classes = 10
+        datasets = {"mnist": [MNIST, (1, 28, 28)],
+                    "kmnist": [KMNIST, (1, 28, 28)],
+                    "fashion": [FashionMNIST, (1, 28, 28)],
+                    "cifar": [CIFAR10, (3, 32, 32)]}
+        
+        dataset = datasets[self._dataset][0]
+        shape = datasets[self._dataset][1]
+        self._test = dataset("./whole/datasets", download=True, train=False, transform=transforms.ToTensor())
+        self._train = dataset("./whole/datasets", download=True, train=True, transform=transforms.ToTensor())
+        self._input_shape = shape
+        
         
         self._train_loader = DataLoader(self._train, batch_size=30)
-        self._test_loader = DataLoader(self._test, batch_size=30)
+        # self._test_loader = DataLoader(self._test, batch_size=30)
     
 
     def _set_seed(self, seed):
@@ -1439,7 +1459,8 @@ class ExperimentV4():
                     model=self._model1,
                     input_shape=self._input_shape,
                     interval=self._interval,
-                    data=self._train,
+                    train_data=self._train,
+                    test_data=self._test,
                     problem=self._problem,
                     device=self._device
                 )
@@ -1451,6 +1472,7 @@ class ExperimentV4():
                     generations=self._bound_gens,
                     bound_estimation=True,
                     prestep=False,
+                    subset_fraction=self._subset_fraction,
                     inter_r=self._inter_r,
                     m_r=self._mutation_r,
                     m_s=self._mutation_s,
@@ -1513,7 +1535,8 @@ class ExperimentV4():
                 model=self._model1,
                 input_shape=self._input_shape,
                 interval=self._interval,
-                data=self._train,
+                train_data=self._train,
+                test_data=self._test,
                 problem=self._problem,
                 device=self._device
             )
@@ -1529,6 +1552,7 @@ class ExperimentV4():
                 generations=self._evo_gens,
                 bound_estimation=False,
                 prestep=False,
+                subset_fraction=self._subset_fraction,
                 inter_r=self._inter_r,
                 m_r=self._mutation_r,
                 m_s=self._mutation_s,
@@ -1544,25 +1568,33 @@ class ExperimentV4():
                 self._best = (m, v, f)
 
             ##################################
-            # extract results: conv + spread
+            # extract results: conv + spread + test_acc
             #################################
+            avg_test_fit, avg_ensemble_fit = evolver.test(self._subset_fraction, ensemble=self._ensemble)
+            if self._ensemble:
+                print(f"avg test accuracy: {avg_test_fit} | ensemble test accuracy: {avg_ensemble_fit}")
+            else:
+                print(f"avg test accuracy: {avg_test_fit}")
+            
+            val_fitnesses = evolver.get_val_fitness()
             best_front = evolver.get_best_front() # (fits1, fits2) (plot)
             # convergence = evolver.avg_convergence() # avg per gen (plot)
             convergence = evolver.get_convergence() # avg per gen (plot)
             f_convergence = convergence[-1] # final gen (dv)
-            val_fitnesses = evolver.get_val_fitness()
             deltas = evolver.get_deltas()
             f_delta = deltas[-1]
 
 
             result = { # save LAST POP IN NORMALISED? FITNESS SPACE ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
                 # (fitnesses1, fitnesses2, strides~colour)
+                "test_fit": avg_test_fit,
+                "val_fits": val_fitnesses, # list of avg. pop val_fitness per gen
+                "ensemble_fit"
                 "empirical_bounds": [self._bounds1, self._bounds2], # also plot????
                 "conv": convergence,
                 "conv_final": f_convergence,
                 "deltas": deltas, 
                 "delta_final": f_delta,
-                "val_fitnesses": val_fitnesses, # list of avg. pop val_fitness per gen
                 "front": best_front, # (fits1, fits2)
             }
 

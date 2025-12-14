@@ -407,7 +407,7 @@ class GAExperiment():
 
             # extract avg fit through gens
             fitintime = evolver.get_fitintime() # list of avg.fits
-            result = {"fit_in_time": fitintime, "test_fit": avg_test_fit}
+            result = {"fit_in_time": fitintime, "test_fit": avg_test_fit, "ensemble_test_fit": avg_ensemble_fit}
             self._results.append(result)
 
             # update run and seed for checkpointing

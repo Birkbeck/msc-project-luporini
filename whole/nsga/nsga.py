@@ -200,7 +200,7 @@ class NSGA2():
         produces train and val loaders
         val_loader_size < train_loader_size
         """
-        full_idxs = list(range(len(self._data)))
+        full_idxs = list(range(len(self._train_data)))
         if isinstance(self._train_data.targets, torch.Tensor):
             labels = self._train_data.targets.numpy()
         elif isinstance(self._train_data.targets, list):

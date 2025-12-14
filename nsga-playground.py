@@ -13,6 +13,7 @@ dataset = "mnist" # mnist, cifar, fashion
 problem = "classification"
 prestep = False 
 condition = "AE" if prestep else "noAE"
+subset_fraction=0.07
 
 model1 = TinyConvClassifier # main model
 model2 = TinyFlexyConvAE # autoencoder for AE condition
@@ -51,7 +52,7 @@ else:
     basedir = cwd
 
 print(os.getcwd())
-basepath = basedir / "whole" / "tests" / f"{dataset}" / f"{condition}"
+basepath = basedir / "whole" / "tests" / "NSGA" / f"{dataset}" / f"{condition}"
 
 basepath.mkdir(parents=True, exist_ok=True)
 
@@ -63,6 +64,7 @@ workflow = exp.ExperimentV4(
     model2=model2,
     pop=pop,
     dataset=dataset,
+    subset_fraction=subset_fraction,
     problem=problem,
     interval=interval,
     seed=seed,
