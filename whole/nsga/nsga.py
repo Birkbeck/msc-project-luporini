@@ -271,9 +271,7 @@ class NSGA2():
     
     def _estimate_convergence(self):
         """
-        given the current population,
-        update the model closer to the ideal solution
-        and its distance from this ideal solution.
+        given the current population, get average distance from ideal solution
         """
         normalised_1 = normalise_objective(self._fitnesses_1, self._emp_bounds_1) # y fitness
         normalised_2 = normalise_objective(self._fitnesses_2, self._emp_bounds_2) # x speed
@@ -504,8 +502,8 @@ class NSGA2():
                 else:
                     distance = crowding_distance(front, all_fitnesses_1, all_fitnesses_2)
                     descending_distance = sorted(front, key=lambda idx: distance[idx], reverse=True)
-                    free = self._pop_size - len(survivors_idx)
-                    survivors_idx.extend(descending_distance[:free])
+                    available = self._pop_size - len(survivors_idx)
+                    survivors_idx.extend(descending_distance[:available])
                     break
 
             self._population = [all_solutions[s] for s in survivors_idx]
