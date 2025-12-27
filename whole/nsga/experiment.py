@@ -1358,7 +1358,7 @@ class ExperimentV4():
         self._prestep = data["prestep"]
         self._run = data["run"]
         self._runs = data["results"][0]["evo_runs"]
-        self._gens = data["results"][0]["gens"]
+        self._gens = data["results"][0]["evo_gens"]
         # self._seed = data["results"][0]["seed"] # don't need it on resume
 
     
