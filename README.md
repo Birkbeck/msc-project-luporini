@@ -2,7 +2,7 @@
 
 Welcome!
 
-This repository's root contains the full implementation and results for single- and multi-objective neuroevolution applied to convolutional classifiers. The material included supports pipeline inspection, result replication and further experimentation.
+This repository's root contains the full implementation and results for single- and multi-objective neuroevolution applied to convolutional classifiers. The material included supports quick pipeline inspection, result replication and further experimentation.
 
 ## Running experiments
 - ga-playground.py contains the single-objective GA pipeline

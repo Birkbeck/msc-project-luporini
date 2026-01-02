@@ -5,10 +5,16 @@ from torch.utils.data import DataLoader
 
 def model_fitness(data: DataLoader, problem="AE"):
     """
-    returns a fitness function that computes 1/avg_loss = avg_fitness
-    across batches given a model
+    a high-order function that returns a function, which computes average fitness value
+    according to the chosen task when a model is given.
+    
+    In regression and AE problems, the returned function computes avg_fitness = -avg_loss
+    where avg_loss is the loss across batches
+
+    In classification, the returned function computes correct / total_images
 
     Args:
+        data: image dataloader
         problem: either "regression", "classification" or default (AE).
     """
     if problem == "regression":
@@ -61,13 +67,14 @@ def group_fitness(pop:list, fn):
     return [fn(i) for i in pop]
 
 
-def normalise_fitness(fitnesses: list, bound):
+def normalise_fitness(fitnesses: list, bound: tuple):
     """
-    normalises fitnesses between 0 and 1
+    given a fitness bound shaped (max_f, min_f)
+    normalise fitnesses between 0 and 1
     normalised_f = (f - min)/(max - min) 
     """
     mino, maxo = bound[0], bound[1]
-    deno = (maxo - mino + 1e-8)
+    deno = (maxo - mino + 1e-8)     # small constant to avoid zero division!
     normalised_fitnesses = [
         (f - mino) / deno
         for f in fitnesses

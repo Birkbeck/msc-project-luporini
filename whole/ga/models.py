@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 
 class TinyFlexyConvAE(nn.Module):
     """
-    Auto encode based on TinyConvAE but adding stride arg
+    Convolutional autoencoder with flexible stride
 
     Args:
         input_shape: e.g., MNIST == (1, 28, 28); CIFAR10 == (3, 32, 32)
@@ -71,6 +71,9 @@ class TinyFlexyConvAE(nn.Module):
     
 
 class TinyConvClassifier(nn.Module):
+    """
+    Convolutional classifier that matches TinyFlexyConvAE
+    """
     def __init__(
             self,
             input_shape=(1, 28, 28),
@@ -129,7 +132,17 @@ def create_AE_pop(
         device=torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 ):
     """
-    ⛔️ could train on subset?! less compute?!
+    Create and train a population of denoising autoencoders
+
+    Args:
+        model: most likely TinyFlexyConvAE (or any AE class)
+        size: pop size
+        shape: input shape (from the used dataset)
+        epochs: training iterations
+        stride: stride of the convolutional block
+        data: image DataLoader
+        noise: how much noise? default .4
+        device: what device? default cuda
     """
     loss_fn = nn.MSELoss()
 
