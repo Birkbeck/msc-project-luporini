@@ -19,11 +19,12 @@ from .utils import flatten, remodel
 
 
 class GeneticAlgorithmV2():
-
-
+    """
+    Single-objective Genetic Algorithm for visual tasks. 
+    """
     def __init__(
             self,
-            model, # instance!!!
+            model, # model instance!!!
             population,
             pop_size,
             train_data,
@@ -32,20 +33,23 @@ class GeneticAlgorithmV2():
             device=torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     ):
         self._model = model
-        self._pop_size = pop_size # ⁉️need it⁉️
+        self._pop_size = pop_size
         self._fit_fn = None
         self._train_data = train_data
         self._test_data = test_data
         self._population = [deepcopy(model.to(device)) for i in range(self._pop_size)] if population else None
         self._fitnesses = [None for i in range(self._pop_size)]
-        self._avgfitness = [] # per generation
+        self._avgfitness = [] # avg.pop.fitness per generation
         self._problem = problem
         self._device = device
     
     def _trainval_loaders(self, fraction):
         """
-        produces train and val loaders
+        Get training and validation loaders for the evolutionary loop
+        
         val_loader_size < train_loader_size
+            - train_loader_size = fraction * tot_train_data (reduce computational cost)
+            - val_loader_size = some_portion * train_loader_size
         """
         full_idxs = list(range(len(self._train_data)))
         if isinstance(self._train_data.targets, torch.Tensor):
@@ -71,21 +75,34 @@ class GeneticAlgorithmV2():
     
 
     def _avg_fitness(self):
+        """ compute avg_population fitness"""
         fitnesses = [i for i in self._fitnesses if i is not None]
         if not fitnesses:
             return None
         return torch.mean(torch.tensor(fitnesses)).item()
         
 
-    def evolve(self, generations=10, subset_fraction=0.07, m_r_min=0.01, m_r_max=0.2, m_r_decay = True, power=2, m_s=0.2, mode="uniform"):
+    def evolve(self,
+               generations=10,
+               subset_fraction=0.07,
+               m_r_min=0.01,
+               m_r_max=0.2,
+               m_r_decay = True,
+               power=2,
+               m_s=0.2,
+               mode="uniform"):
         """
-        evolution method👍
-
-        careful: do you want access to mutation parameters????
+        core evolution method!
 
         args:
             generations: number of generations
-            report_jump: integer n, with report given every n generations
+            subset_fraction: proportion of the data you want to use
+            m_r_min: mutation rate lower bound for decay
+            m_r_max: mutation rate upper bound for decay
+            m_r_decay: bool, do you want decay?
+            power: decay parameter
+            m_s: mutation strength
+            mode: crossover type, default "uniform"
         """
         #######################################
         train_loader, _ = self._trainval_loaders(subset_fraction)
@@ -137,7 +154,11 @@ class GeneticAlgorithmV2():
                 print(f"{gen} gen | avg. population fitness: {self._avg_fitness()}")
 
     def test(self, fraction, ensemble=False):
-        """ return avg_test_fitness, voting_acc """
+        """
+        compute test fitness and enable population as ensemble if ensemble=True
+        
+        returns avg_test_fitness, voting_acc
+        """
         voting_acc = None
 
         full_idxs = list(range(len(self._test_data)))
@@ -188,6 +209,7 @@ class GeneticAlgorithmV2():
 
 
     def extract_best(self, k=1):
+        """ extract the best k models """
         zipped = list(zip(self._population, self._fitnesses))
         sorted_population = sorted(zipped, key=lambda x: x[1], reverse=True)
         return sorted_population[:k]
@@ -221,18 +243,18 @@ class GAExperiment():
             self,
             model1, # task model
             model2, # autoencoder
-            stride,
-            pop,
-            dataset,
-            subset_fraction,
-            problem,
-            seed,
+            stride, # convolutional stride
+            pop, # population size
+            dataset, # dataset label (i.e., "mnist", "fashion", "kmnist")
+            subset_fraction, # proportion of data to use
+            problem, 
+            seed, # initial seed
             experiment_path,
             prestep=False,
             AEepochs=4,
             classes=10,
-            runs=1,
-            gens=30,
+            runs=1, # number of experimental runs, default 1
+            gens=30, # number of generations per run, default 30
             mutation_rate_min=0.01,
             mutation_rate_max=0.2,
             mutation_rate_decay=True,

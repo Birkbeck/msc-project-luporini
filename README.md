@@ -5,15 +5,20 @@ Welcome!
 This repository's root contains the full implementation and results for single- and multi-objective neuroevolution applied to convolutional classifiers. The material included supports quick pipeline inspection, result replication and further experimentation.
 
 ## Running experiments
-- ga-playground.py contains the single-objective GA pipeline
-- nsga-playground.py contains the multi-objective NSGA pipeline
+- ga-playground.py contains a small-scale single-objective GA example
+- genalgo.ipynb contains the full-scale single-objective GA pipeline that appears in the report 
+
+- nsga-playground.py contains the multi-objective NSGA example
+- nsga.ipynb contains the full-scale multi-objective NSGA pipeline that appears in the report
 
 ## Analysis
 - analysis.ipynb contains the single-objective GA analysis
 - NSGA_analysis.ipynb contains the multi-objective NSGA analysis
 
 
-The playground scripts and analysis notebooks can run as-is. Playgrounds are set for small-scale experiments, and they run smoothly on my 2020 consumer-grade laptop (however, the runs recorded in the project report were performed on Google Colab with GPU acceleration). Notebooks are initialised with the project's analyses, which may be replicated straightaway.
+The playground scripts and analysis notebooks can run as-is. Playgrounds are set for small-scale experiments, and they run smoothly on my 2020 consumer-grade laptop. However, the full-scale experimental notebooks run on Google Colab with GPU acceleration.
+
+Analysis notebooks are initialised with the project's analyses, which may be replicated straightaway.
 
 More granular implementation details are found in individual modules stored in the repository, whose structure is as follows:
 

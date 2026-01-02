@@ -15,8 +15,11 @@ from torch.utils.data import DataLoader, Subset
 
 
 
-def non_dominated_sorting(whole, fits1, fits2):
+def non_dominated_sorting(whole:list, fits1, fits2):
     """
+    performs nondominated sorting of population indices based on two fitness lists
+    whole = population
+
     careful:
     - dom_counts: list of integers (idx = )
     - dominateds: list of lists (idx = by whom)
@@ -78,6 +81,9 @@ def non_dominated_sorting(whole, fits1, fits2):
 # HELPER FUNCTION
 def crowding_distance(front, *objectives):
     """
+    computes the crowding distance for each solution in a given front
+    (COULD CHANGE TO TWO OBJECTIVES FOR CONSISTENCY)
+
     Args:
         front: a list of idx from the populations
         objectives: list of o lists, where o == number of objectives 
@@ -291,10 +297,11 @@ class NSGA2():
         """
         ⛔️ fitnesses already normalised ⛔️
 
-        Deb's delta from the original paper (2002)
+        Deb's delta (Deb et al., 2002)
         normalised crowding distance of the last non-dominated front
         - trivial for one point
         - poorly informative for two points(∆ = 2/3 d, d=distance1-2)
+        - needs more points! Here, computed if fronts includes at least 3 solutions.
         """
         if len(fits1) >= 3:
             points = sorted(zip(fits1, fits2), key=lambda x: x[0]) # sort by fits1
