@@ -7,7 +7,7 @@
                 noAE condition:
                     mean = 0.2454 , std = 0.0302
 
-                p-value (two-tailed Welch's t-test) = 0.4
+                p-value (two-tailed Student's t-test) = 0.4
                 p-value (two-tailed Mann-Whitney) = 0.3976
             
             * mnist dataset:
@@ -18,7 +18,7 @@
                 noAE condition:
                     mean = 0.2355 , std = 0.0267
 
-                p-value (two-tailed Welch's t-test) = 0.0456
+                p-value (two-tailed Student's t-test) = 0.0455
                 p-value (two-tailed Mann-Whitney) = 0.0566
             
             * kmnist dataset:
@@ -29,6 +29,6 @@
                 noAE condition:
                     mean = 0.1686 , std = 0.0207
 
-                p-value (two-tailed Welch's t-test) = 0.8765
+                p-value (two-tailed Student's t-test) = 0.8765
                 p-value (two-tailed Mann-Whitney) = 0.9358
             
