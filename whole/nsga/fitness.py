@@ -4,56 +4,31 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 
-# def model_fitness(data: DataLoader, problem="AE"):
-#     """
-#     returns a fitness function that computes 1/avg_loss = avg_fitness
-#     across batches given a model
-
-#     ⛔️ using non_blocking + pin_memory (DataLoader at the start of evolve):
-#     https://docs.pytorch.org/tutorials/intermediate/pinmem_nonblock.html
-
-#     Args:
-#         problem: either "regression", "classification" or default (AE).
-#     """
-#     if problem == "regression":
-#         loss_fn = nn.MSELoss()
-#         out = lambda X, y: y
-#     elif problem == "classification":
-#         loss_fn = nn.CrossEntropyLoss() # expect logits, y.shape((batch,))
-#         out = lambda X, y: y        # if working with encodings, will break!
-#     else:
-#         loss_fn = nn.MSELoss()
-#         out = lambda X, y: X
-    
-#     def fitness(model):
-#         device = next(model.parameters()).device
-#         model.eval()
-#         with torch.no_grad():
-#             tot_loss = 0
-#             for X, y in data:
-#                 X = X.to(device, non_blocking=True)
-#                 y = out(X, y).to(device, non_blocking=True)
-#                 pred = model(X)
-#                 loss = loss_fn(pred, y)
-#                 tot_loss += loss.item()   # ⛔️SPIKING FITNESS if avg_loss very small
-#             avg_loss = tot_loss / len(data) # enumerate starts from 0
-#             # avg_fitness = 1 / (avg_loss + 1e-8) # if avg_loss–>0, avg_fit–>inf!!
-#             avg_fitness = -avg_loss
-#         return avg_fitness
-    
-#     return fitness
-
 def model_fitness(data: DataLoader, problem="AE"):
     """
-    returns model accuracy if problem == "classification" or
-    a fitness function that computes 1/avg_loss = avg_fitness 
-    across batches given a model if "AE or regression"
+    
+    High-order function that returns a task-specific fitness function as fitness(model).
+
+    Given a PyTorch DataLoader and problem type, this function returns a callable 'fitness(model)'.
+    The callable evaluates the model passed to it on the data of the DataLoader, 
+    and it returns a scalar average fitness score across batches.
+
+    Fitness definition by problem: 
+    
+    - Regression / autoencoder (AE) problems: fitness = -avg_loss
+
+    - Classification: fitness = correct / total_images
+
+    Args:
+        data: image DataLoader with (X, y) batches
+        problem: either "regression", "classification" or default ("AE").
+    
+    Returns:
+        callable(nn.Module): function computes fitness for given model
 
     ⛔️ using non_blocking + pin_memory (DataLoader at the start of evolve):
     https://docs.pytorch.org/tutorials/intermediate/pinmem_nonblock.html
 
-    Args:
-        problem: either "regression", "classification" or default (AE).
     """
     if problem == "regression":
         loss_fn = nn.MSELoss()
@@ -98,15 +73,16 @@ def model_fitness(data: DataLoader, problem="AE"):
 
 def model_runtime(data: DataLoader):
     """
-    careful if using on GPU.. operations are asynchronous
-    - torch.cuda.synchronise() ⁉️
-    - synch for every time.time() ⁉️
+    Returns a runtime(model) function to evaluate model speed.
+
+    Careful if using on GPU.. operations are asynchronous
+    - torch.cuda.synchronise() ?
+    - synch for every time.time() ?
     (https://discuss.pytorch.org/t/bizzare-extra-time-consumption-in-pytorch-gpu-1-1-0-1-2-0/87843)
 
     ALSO
-
-    - just evaluate on representative batch ⁉️
-    - return len(data)/interval ⁉️
+    - just evaluate on representative batch 
+    - return len(data)/interval 
     """
     def speed(model):
         device = next(model.parameters()).device
@@ -139,8 +115,16 @@ def model_runtime(data: DataLoader):
 
 def normalise_objective(fitnesses: list, bound):
     """
-    normalises fitnesses between 0 and 1
-    normalised_f = (f - min)/(max - min) 
+    Normalises objective values within the range [0, 1].
+    
+    Formula: normalised_f = (f - f_min)/(f_max - f_min) 
+
+    Args:
+        fitnesses [list]: objective values (here, accuracy- or runtime-based)
+        bound [tuple]: (f_min, f_max)
+    
+    Returns:
+        list: notmalised objectives
     """
     mino, maxo = bound
     normalised_fitnesses = [
@@ -152,8 +136,17 @@ def normalise_objective(fitnesses: list, bound):
 
 def group_fitness(pop:list, fn, bound:tuple)->list:
     """
-    given a model pop and a fitness function, return fitness for each model
-    - fitnesses are clamped between the given bound (empirical bounds!!!)
+    Return fitness values for a population of models.
+
+    Optionally, fitness can be clamped to a given bound.
+
+    Args:
+        pop [list]: population of models
+        fn [callable]: fitness function (fitness(model))
+        bound [tuple or None]: fitness range (f_min, f_max)
+    
+    Returns:
+        list: fitness values
     """
     if bound is None:
         return [fn(i) for i in pop] 

@@ -4,7 +4,14 @@ import torch
 
 def flatten(model):
     """
-     flatten each parameter into a 1D tensor and concatenate
+     Flatten nn.Module into a 1D tensor.
+
+    Parameters are concatenated in the order they are returned by model.parameters().
+
+    Args:
+        model [torch.nn.Module]
+    Returns:
+        torch.Tensor: 1D tensor, flattened moder
     """
     device = next(model.parameters()).device
     return torch.cat([param.view(-1) for param in model.parameters()]).to(device)
@@ -13,6 +20,16 @@ def flatten(model):
                             # might need autograd later
 
 def embed(model, biggest, device):
+    """
+    Create genomes for populations of heterogenenous complexity.
+
+    Embed a flattened model within a standard-length 1D tensor, to anable crossover.
+
+    The size of the standard-length tensor is given by biggest (the biggest size model in pop).
+
+    In practice, the flattened model is symmetrically padded on each size so that
+    the final 1D tensor has length equal to biggest.
+    """
     device = next(model.parameters()).device
     flat = flatten(model)
     mu = flat.mean().item()
@@ -36,6 +53,18 @@ def embed(model, biggest, device):
 
 
 def remodel(embedded, original_size, model, biggest):
+    """
+    Rebuild a PyTorch model from a flat genome configuration.
+
+    Args:
+        embedded [torch.Tensor]: padded model tensor
+        original_size [int]: original parameter count, to know where to slice
+        model [torch.nn.Module]: model template
+        biggest [int]: dimensionality in biggest model in population (meh..could optimise..)
+    
+    Returns:
+        torch.nn.Module: model!
+    """
     device = next(model.parameters()).device
     difference = biggest - original_size
     lx = difference // 2
@@ -53,12 +82,22 @@ def remodel(embedded, original_size, model, biggest):
 # HELPER FUNCTIONS for evaluation convergence and spread⛔️
 ########################################################################
 def convergence(p1, p2):
-    """for a model: Euclidean distance from ideal s in nD"""
+    """
+    Given a point (p1, p2) in 2D space, compute Euclidean distance to (1, 1).
+    """
     return math.sqrt((p1 - 1)**2 + (p2 - 1)**2)
         
 
 def euclidean(point1:tuple, point2:tuple)->float:
-    """euclidean distance between points in 2D """
+    """
+    Compute the Euclidean distance between points in 2D.
+
+    Args:
+        point1 [tuple]: (coord1, coord2)
+        point2 [tuple]: (coord1, coord2)
+        
+        (coords are fitness values here!)
+    """
     x1, y1 = point1
     x2, y2 = point2
     return math.sqrt((x1-x2)**2 + (y1-y2)**2)

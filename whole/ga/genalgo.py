@@ -531,14 +531,14 @@ class GAExperiment():
             result = {"fit_in_time": fitintime, "test_fit": avg_test_fit, "ensemble_test_fit": avg_ensemble_fit}
             self._results.append(result)
 
-            # update run and seed for checkpointing
+            # update run and seed for next run and checkpointing
             self._run +=1
             self._seed +=1
             seed +=1
 
             if self._prestep:
-                del autopop # make sure that GPU is freed
-                torch.cuda.empty_cache() # ⁉️
+                del autopop # make sure that GPU is freed ??
+                torch.cuda.empty_cache()
             
             if self._check:
                 self._current_seed = seed

@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 
 def model_fitness(data: DataLoader, problem="AE"):
     """
-    High-order function that returns a task-specific fitness function.
+    High-order function that returns a task-specific fitness function as fitness(model).
 
     Given a PyTorch DataLoader and problem type, this function returns a callable 'fitness(model)'.
     The callable evaluates the model passed to it on the data of the DataLoader, 

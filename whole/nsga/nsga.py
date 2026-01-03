@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader, Subset
 
 def non_dominated_sorting(whole:list, fits1, fits2):
     """
-    performs nondominated sorting of population indices based on two fitness lists
+    Performs nondominated sorting of population indices based on two fitness lists
     whole = population
 
     careful:
@@ -28,9 +28,19 @@ def non_dominated_sorting(whole:list, fits1, fits2):
     # HELPER FUNCTION
     def _dominates(i, j):
         """
-        MAXIMISATION problem: i dominates j if neither fitness worse and at least one better
+        Computes dominance between solutions.
+
+        MAXIMISATION formulation: i dominates j if neither fitness worse and at least one better
         "neither fitness worse" F1i >= F1j AND F2i >= F2j
         "at least one better" F1i > F1j OR F2i > F2j
+
+        Args:
+            i [int]: index of solution i in population
+            j [int]: index of solution j in population
+        
+        Returns:
+            bool: i dominates j ?
+        
         """
         return (
             (fits1[i] >= fits1[j] and fits2[i] >= fits2[j]) and
@@ -120,17 +130,23 @@ def crowding_distance(front, *objectives):
 
 class NSGA2():
     """
-    ⛔️ bug in evolve.TOURNAMENT ~ CONVERGENCE ⛔️
-        - if evolution converges towards one archi only,
-          only one key available
+    Multi-objective NSGA-II-inspired evolution supporting heterogeneous populations.
     
-    multi-objective evolution based on Islands + original nsga-ii
-    obj_1 = classic net optimisation (MSELoss/CrossEntropy)
-    obj_2 = inference speed
+    Here, it is referred to as an 'island' genetic algorithm (islands = species by complexity).
 
-    remember:
-        - initialise islands????????
-        - need the right 'problem' when initialising the Island class!!!
+    Objectives:
+        1. task fitness (MSELoss/CrossEntropy)
+        2. runtime speed
+
+    Args:
+        pop_size [int]: population size
+        model [torch.nn.Module]: classifier class (not instance!)
+        train_data [DataLoader]: train data
+        test_data [DataLoader]: test data
+        input_shape [tuple]: (C, H, W) (e.g., MNIST (1, 28, 28))
+        interval [tuple]: discrete stride interval
+        problem [str]: "regression", "AE" or "classification"
+        device [torch.device]: suitable device, default = cuda
     """
     def __init__(
             self,
@@ -147,10 +163,12 @@ class NSGA2():
         self._train_data = train_data
         self._test_data = test_data
         self._input_shape = input_shape
-        self._model = model # needs to be a class, not an istance!
+        self._model = model
         self._problem = problem
         self._device = device
         self._pop_size = pop_size
+
+        # initialise population 
         self._population = [
             deepcopy(
                 model(
@@ -183,12 +201,14 @@ class NSGA2():
 
     
     def _initialise_islands(self):
+        """ Organise population into islands (species). """
         self._islands = defaultdict(list)
         for m in self._population:
             key = m.get_stride()
             self._islands[key].append(m)
     
     def _check_biggest(self):
+        """ Check if biggest is still biggest and, in case, update."""
         current_biggest = max(
             sum(param.numel() for param in m.parameters()) 
                 for m in self._population
@@ -202,10 +222,7 @@ class NSGA2():
     
 
     def _trainval_loaders(self, fraction):
-        """
-        produces train and val loaders
-        val_loader_size < train_loader_size
-        """
+        """ Split data into train and validation DataLoaders."""
         full_idxs = list(range(len(self._train_data)))
         if isinstance(self._train_data.targets, torch.Tensor):
             labels = self._train_data.targets.numpy()
@@ -230,25 +247,32 @@ class NSGA2():
     
 
     def _bounds_estimation(self, fitnesses)->tuple:
-        """update (or not) bounds"""
+        """
+        Given a pool of fitnesses, estimate bounds using 5th and 95th percentiles.
+        """
         mino = np.percentile(fitnesses, 5)
         maxo = np.percentile(fitnesses, 95)
         return mino, maxo
     
     def _update_m_rate(self, m_c): #close:int, far:int): # close=3, far=10
         """ 
-        updating m_chance based on how recent generations
-        are doing compared to more distant generations
+        NOT USED!!!
 
-        args:
-            - close: recent generations for closer window
-            - far: distant generations for farther windon
+        Update m_rate based on how recent generations
+        are doing compared to more distant generations
+        - if recent generations improve, lower mutation
+        - if not, increase mutation
+
+        Args:
+            m_c [float]: current mutation rate
         
-        ⛔️ scaling constants???
-        ⛔️ better to use proportional scaling??? close_avg / far_avg???
+        Returns:
+            new_rate [float]
         """
-        # define helper function
         def avg_close_far(fit, what):
+            """
+            HELPER: Compute average performance over a number of generations.
+            """
             if what == "convergence":
                 recent = fit[-2:] if len(fit) >= 5 else fit[:] # pop_avgs last 2 gens
                 distant = fit[-5:-2] if len(fit) >= 10 else fit[:-len(recent)] # pop_avgs previous 3 gens
@@ -273,16 +297,18 @@ class NSGA2():
         new_rate = max(min(new_rate, 0.4), 0.01)
         
         return new_rate
-        
     
+    # ------------------------------------------
+    # convergence and diversity estimation 
+    # ----------------------------------------
     def _estimate_convergence(self):
         """
-        given the current population, get average distance from ideal solution
+        Given the current population, get average distance from utopia point.
         """
         normalised_1 = normalise_objective(self._fitnesses_1, self._emp_bounds_1) # y fitness
         normalised_2 = normalise_objective(self._fitnesses_2, self._emp_bounds_2) # x speed
         
-        # getting distance from ideal for each model 
+        # getting distance from utopia for each model 
         distances = [] # and record in self._convergence 
         for i in range(self._pop_size):
             distances.append(convergence(normalised_1[i], normalised_2[i]))
@@ -295,13 +321,15 @@ class NSGA2():
 
     def _estimate_spread(self, fits1:list, fits2:list)->float:
         """
-        ⛔️ fitnesses already normalised ⛔️
+        (On  already normalised fitnesses)
 
-        Deb's delta (Deb et al., 2002)
-        normalised crowding distance of the last non-dominated front
+        Compute Deb's ∆ (Deb et al., 2002) to measure diversity on nondominated front.
+
+        ∆ is a normalised crowding distance measure:
         - trivial for one point
         - poorly informative for two points(∆ = 2/3 d, d=distance1-2)
-        - needs more points! Here, computed if fronts includes at least 3 solutions.
+        - needs more points!
+        Here, computed if fronts includes at least 3 solutions.
         """
         if len(fits1) >= 3:
             points = sorted(zip(fits1, fits2), key=lambda x: x[0]) # sort by fits1
@@ -321,15 +349,11 @@ class NSGA2():
         else:
             self._deltas.append(float("nan")) # ⁉️
 
-        
-    # def _clear_attributes(self, bound1, bound2):
-    #     self._fitnesses_1 = None
-    #     self._fitnesses_2 = None
-    #     self._convergence = [] # list of lists: normalised distances per generation
-    #     self._best_model = None
-    #     self._emp_bounds_1 = bound1 # empirical bounds per objective
-    #     self._emp_bounds_2 = bound2
+    # -------------------------------
+    # getter and setter methods
+    # -----------------------------
     
+    # get and set empirical bounds 
     def get_bounds(self):
         return self._emp_bounds_1, self._emp_bounds_2
     
@@ -355,6 +379,7 @@ class NSGA2():
         best = self._best_model #(model, val, fit)
         return best
     
+    # save best model
     def save_best(self, filepath):
         best = {
             "weights": self._best_model.state_dict()
@@ -364,28 +389,15 @@ class NSGA2():
     def get_best_front(self):
         return self._best_front
 
-    # def get_transfer_pop(self, to_model, in_shape, classes, freeze=False):
-    #     """should I just swap the new pop in??"""
-    #     pop = []
-    #     for m in self._population:
-    #         weights = m.encoder.state_dict()
-    #         new = to_model(input_shape=in_shape, stride=m.get_stride(), classes=classes).to(self._device)
-    #         new.encoder.load_state_dict(weights)
-
-    #         if freeze:
-    #             for param in new.parameters():
-    #                 param.requires_grad = False
-
-    #         pop.append(new)
-        
-    #     return pop
-    
-    # def transfer_pop(self, pop):
-    #     self._population = pop
-    
-
+    # ----------------------------------------------
+    # transfer weights from autoencode population
+    # ---------------------------------------------
     def transfer_popV2(self, pop, to_model, in_shape, classes, freeze=False):
-        """should I just swap the new pop in??"""
+        """
+        Transfer the weights.
+
+        Use each model in population as template and copy AE parameter one by one.
+        """
         finalpop = []
         for m in pop:
             weights = m.encoder.state_dict()
@@ -417,17 +429,37 @@ class NSGA2():
             power=2,
             m_mode="small"
     ):
-        for gen in range(generations):
+        """
+        NSGA evolutionary loop.
 
+        Args:
+            prestep [bool]: condition, AE initialisation if True
+            bound_estimation [bool]: is this a bound estimation run?
+            generations [int]: number of generations
+            subset_fraction [float]: subset fraction
+            inter_r [float]: cross-species crossover rate
+            m_r_min [float]: lower bound for mutation rate
+            m_r_max [float]: upper bound for mutation rate
+            m_r_decay [bool]: use decay?
+            m_s [float]: Gaussian mutation scaler
+            power [int]: decay curve parameter
+            m_mode [str]: what kind of mutation?
+        """
+        for gen in range(generations):
+            
+            # ---------------------------------------------------------------
+            # initialise train and validatio loaders, and fitness functions
+            # ---------------------------------------------------------------
             train_loader, val_loader = self._trainval_loaders(subset_fraction)
             
             fit_fn_1 = self._fit_fn_1(train_loader, self._problem)
             fit_fn_2 = self._fit_fn_2(train_loader)
 
-            self._fitnesses_1 = group_fitness( # clamped within emp_bounds
+            # compute both objective values for parents (beginning of generation)
+            self._fitnesses_1 = group_fitness( # clamped within emp_bounds if available
                 self._population, fit_fn_1, self._emp_bounds_1
             )
-            self._fitnesses_2 = group_fitness( # clamped within emp_bounds
+            self._fitnesses_2 = group_fitness( # clamped within emp_bounds if available
                 self._population, fit_fn_2, self._emp_bounds_2
             )
 
@@ -439,19 +471,23 @@ class NSGA2():
             if m_r_decay:
                 m_r = m_r_min + (m_r_max - m_r_min)*(1 - (gen/(generations - 1))**power)
 
-            # mating events, either within(more likely) or between(less likely)
+            # ------------------------------------------------------------------------
+            # mating events, within species (more likely) or between species (less likely)
+            # ------------------------------------------------------------------------
             children = [] # TOURNAMENT 🔥
             self._check_biggest()
             interspecies = 0
-            for _ in range(self._pop_size//2): # ADD CONDITION if crossover ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
-                if random.random() < inter_r and len(self._islands)>= 2: # unlikely cross-species crossover 🔥
+            for _ in range(self._pop_size//2):
+                # unlikely cross-species crossover 
+                if random.random() < inter_r and len(self._islands)>= 2:
                     random_keys = random.sample(list(self._islands.keys()), k=2)
                     key1, key2 = random_keys[0], random_keys[1]
                     pool1, pool2 = self._islands[key1], self._islands[key2]
                     parent1, parent2 = random.choice(pool1), random.choice(pool2)
                     parent1, parent2 = embed(parent1, self._biggest, self._device), embed(parent2, self._biggest, self._device)
                     interspecies += 1
-                else: # regular intraspecies crossover 🔥
+                else:
+                    # regular intraspecies crossover 
                     key = random.choice(list(self._islands.keys()))
                     pool = self._islands[key]
                     if len(pool) == 1:
@@ -469,15 +505,20 @@ class NSGA2():
                         parent2 = embed(parent2, self._biggest, self._device)
                     
                 
-                self._check_biggest()
+                self._check_biggest() # just make sure biggest is still biggest
 
+                # --------------------
+                # genetic operators
+                # -------------------
                 child1, child2 = crossover(parent1, parent2)
                 child1 = (mutate(child1[0], m_mode, m_rate=m_r, m_strength=m_s), child1[1], child1[2]) 
                 child2 = (mutate(child2[0], m_mode, m_rate=m_r, m_strength=m_s), child2[1], child2[2]) 
                 
                 children.extend([child1, child2])
 
-
+            # ----------------------------------------------
+            # remodel children and compute fitness values
+            # ----------------------------------------------
                                     # remodel(f,s,a,biggest)–>model!
             remodelled_children = [remodel(f, s, a, self._biggest) for f, s, a in children]
             children_fitnesses_1 = group_fitness(
@@ -486,6 +527,8 @@ class NSGA2():
             children_fitnesses_2 = group_fitness(
                 remodelled_children, fit_fn_2, self._emp_bounds_2
             )
+
+            # define intermediate population
             all_solutions = self._population + remodelled_children
             all_fitnesses_1 = self._fitnesses_1 + children_fitnesses_1
             all_fitnesses_2 = self._fitnesses_2 + children_fitnesses_2
@@ -494,11 +537,16 @@ class NSGA2():
             assert len(self._fitnesses_1) == self._pop_size
             assert len(self._fitnesses_2) == self._pop_size
 
+            # ------------------
+            # NSGA OPERATIONS
+            # ------------------
+
+            # sorting
             fronts = non_dominated_sorting(
                 all_solutions, all_fitnesses_1, all_fitnesses_2
             )
             
-            
+            # next generation building based on ranks and crowding distance
             survivors_idx = []
             for front in fronts:
                 if len(survivors_idx) + len(front) < self._pop_size:
@@ -512,25 +560,24 @@ class NSGA2():
                     available = self._pop_size - len(survivors_idx)
                     survivors_idx.extend(descending_distance[:available])
                     break
-
+            
+            # update population and fitnesses
             self._population = [all_solutions[s] for s in survivors_idx]
             self._fitnesses_1 = [all_fitnesses_1[s] for s in survivors_idx]
             self._fitnesses_2 = [all_fitnesses_2[s] for s in survivors_idx]
 
-
-            ##################################
-            ###### here ends selection !!!!!!
-            ##################################
+            # reinitialise islands and biggest
             self._initialise_islands()
             self._check_biggest()
 
-            ##################################################################
-            ####### IF NOT PRESTEP: bounds // convergence/spread // validation
-            #################################################################
+            # ------------------------------------------------
+            # bound estimation, convergence and validation
+            # ------------------------------------------------
             if prestep:
                 print(f"gen {gen}")
             
             else:
+                # if bound estimation, collect fitnesses for percentile computation
                 if bound_estimation:
                     print(f"gen {gen}")
 
@@ -541,26 +588,23 @@ class NSGA2():
                         self._emp_bounds_2 = self._bounds_estimation(self._fitnesses_2_pool)
                 
                 else:
-                    # --------- convergence --------- #
+                    # if not bound estimation, compute convergence
                     avg_conv = self._estimate_convergence()
                     
-                    
-                    # ------------ spread ------------ #
+                    # and spread
                     f1 = fronts[0] # last non-dominated front
                     f1_length = len(f1)
                     f1_models = self._population[:f1_length]
                     f1_fitnesses_1 = self._fitnesses_1[:f1_length]
                     f1_fitnesses_2 = self._fitnesses_2[:f1_length]
-                    
                     normalised_1 = normalise_objective(f1_fitnesses_1, self._emp_bounds_1) 
                     normalised_2 = normalise_objective(f1_fitnesses_2, self._emp_bounds_2)
                     
                     self._estimate_spread(normalised_1, normalised_2) # Deb's ∆
 
-
-                    # ---------- validation ---------- #
-                    # avg_val = None
-                    # if gen >= 4 and gen % 2 == 0:
+                    # ----------------
+                    # validation
+                    # ----------------
                     fit_fn_1 = self._fit_fn_1(val_loader, self._problem)
                     fit_fn_2 = self._fit_fn_2(val_loader)
 
@@ -572,8 +616,9 @@ class NSGA2():
 
                     self._val_fitnesses.append(avg_val)
 
-
-                    # extracting the best model (best val in first front)
+                    # ---------------------------------------------
+                    # extract best model (best val in first front)
+                    # ---------------------------------------------
                     f1_val_fitnesses = val_fitnesses[:f1_length]
                     f1_modval = list(zip(f1_models, f1_val_fitnesses, f1_fitnesses_1))
                     sorted_f1_modval = sorted(f1_modval, key=lambda x: x[1], reverse=True)
@@ -604,7 +649,18 @@ class NSGA2():
     
     
     def test(self, fraction, ensemble=False):
-        """ return avg_test_fitness, voting_acc """
+        """
+        Evaluate the population on test data.
+
+        Args:
+            fraction [float]: fraction of test data to use
+            ensemble [bool]: if true, return majority vote of population as ensemble
+        
+        Returns:
+            avg_test_fitness_1 [float]: avg. objective 1 in pop
+            avg_test_fitness_2 [float]: avg. objective 2 in pop
+            voting_acc [float or None]: ensemble accuracy if ensemble=True
+        """
         voting_acc = None
 
         full_idxs = list(range(len(self._test_data)))

@@ -7,14 +7,15 @@ from matplotlib import pyplot as plt
 
 class TinyFlexyConvAE(nn.Module):
     """
-    Auto encode based on TinyConvAE but adding stride arg
+    Convolutional autoencoder with flexible stride.
+
 
     Args:
-        input_shape: e.g., MNIST == (1, 28, 28); CIFAR10 == (3, 32, 32)
-        stride: stride value.. the same for each convolutional layer
-        padding: padding pixels
-        kernel: filter size
-        nonlinearity: activation function after convLayers
+        input_shape [tuple]: input tensor shape (C, H, W) (e.g., MNIST == (1, 28, 28); CIFAR10 == (3, 32, 32))
+        stride [int]: stride value for convolutional block
+        padding [int]: padding pixels for convolution
+        kernel [int]: filter size
+        nonlinearity [nn.Module]: activation function class (e.g., nn.ReLU)
     """
     def __init__(
             self,
@@ -71,6 +72,11 @@ class TinyFlexyConvAE(nn.Module):
     
 
 class TinyConvClassifier(nn.Module):
+    """
+    The agent of interest - a convolutional classifier that matches TinyFlexyConvAE.
+    
+    Uses the same feature encoder to enable effective weight transfer.
+    """
     def __init__(
             self,
             input_shape=(1, 28, 28),
@@ -129,7 +135,19 @@ def create_AE_pop(
         device=torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 ):
     """
-    ⛔️ could train on subset?! less compute?!
+    Create and train a population of denoising autoencoders.
+
+    Each model is initialised and trained independently, using Gaussian noise.
+
+    Args:
+        model [nn.Module]: AE class (i.e., TinyFlexyConvAE)
+        size [int]: population size
+        shape [tuple]: input shape (C, H, W)
+        epochs [int]: training epochs per model
+        stride [int]: stride of the convolutional block
+        data [DataLoader]: training DataLoader
+        noise [float]: Gaussian noise scaler. Default .4
+        device [torch.device]: default cuda
     """
     loss_fn = nn.MSELoss()
 
