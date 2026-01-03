@@ -7,14 +7,15 @@ from matplotlib import pyplot as plt
 
 class TinyFlexyConvAE(nn.Module):
     """
-    Convolutional autoencoder with flexible stride
+    Convolutional autoencoder with flexible stride.
+
 
     Args:
-        input_shape: e.g., MNIST == (1, 28, 28); CIFAR10 == (3, 32, 32)
-        stride: stride value.. the same for each convolutional layer
-        padding: padding pixels
-        kernel: filter size
-        nonlinearity: activation function after convLayers
+        input_shape [tuple]: input tensor shape (C, H, W) (e.g., MNIST == (1, 28, 28); CIFAR10 == (3, 32, 32))
+        stride [int]: stride value for convolutional block
+        padding [int]: padding pixels for convolution
+        kernel [int]: filter size
+        nonlinearity [nn.Module]: activation function class (e.g., nn.ReLU)
     """
     def __init__(
             self,
@@ -25,7 +26,7 @@ class TinyFlexyConvAE(nn.Module):
             nonlinearity=nn.ReLU
     ):
         super().__init__()
-        self._input = input_shape[1]
+        self._input = input_shape[1] # assuming square input
         self._channels = input_shape[0]
         self._stride = stride
         self._pad = padding
@@ -43,10 +44,14 @@ class TinyFlexyConvAE(nn.Module):
             self._nonl()
         )
 
-        # # need to compute out_padding for deconvolution????
-        # but PyTorch constrains out_pad < stride ⛔️
-        # compute it using convolution and transposeConv formulas
+        # # Compute out_padding to ensure reconstruction in deconvolution!
+        # PyTorch constrains out_pad < stride ⛔️
+        # compute out_padding using convolution and transposeConv formulas
+
+        # output size after encoder block
         C1 = (self._input + 2*self._pad - self._kernel)//self._stride + 1
+
+        # required output padding to recover original input size
         out_p1 = self._input - ((C1 - 1)*self._stride - 2*self._pad + self._kernel)
         self.decoder = nn.Sequential(
             nn.ConvTranspose2d(
@@ -72,7 +77,9 @@ class TinyFlexyConvAE(nn.Module):
 
 class TinyConvClassifier(nn.Module):
     """
-    Convolutional classifier that matches TinyFlexyConvAE
+    The agent of interest - a convolutional classifier that matches TinyFlexyConvAE.
+    
+    Uses the same feature encoder to enable effective weight transfer.
     """
     def __init__(
             self,
@@ -132,17 +139,19 @@ def create_AE_pop(
         device=torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 ):
     """
-    Create and train a population of denoising autoencoders
+    Create and train a population of denoising autoencoders.
+
+    Each model is initialised and trained independently, using Gaussian noise.
 
     Args:
-        model: most likely TinyFlexyConvAE (or any AE class)
-        size: pop size
-        shape: input shape (from the used dataset)
-        epochs: training iterations
-        stride: stride of the convolutional block
-        data: image DataLoader
-        noise: how much noise? default .4
-        device: what device? default cuda
+        model [nn.Module]: AE class (i.e., TinyFlexyConvAE)
+        size [int]: population size
+        shape [tuple]: input shape (C, H, W)
+        epochs [int]: training epochs per model
+        stride [int]: stride of the convolutional block
+        data [DataLoader]: training DataLoader
+        noise [float]: Gaussian noise scaler. Default .4
+        device [torch.device]: default cuda
     """
     loss_fn = nn.MSELoss()
 

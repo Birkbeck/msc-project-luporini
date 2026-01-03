@@ -5,17 +5,24 @@ from torch.utils.data import DataLoader
 
 def model_fitness(data: DataLoader, problem="AE"):
     """
-    a high-order function that returns a function, which computes average fitness value
-    according to the chosen task when a model is given.
-    
-    In regression and AE problems, the returned function computes avg_fitness = -avg_loss
-    where avg_loss is the loss across batches
+    High-order function that returns a task-specific fitness function.
 
-    In classification, the returned function computes correct / total_images
+    Given a PyTorch DataLoader and problem type, this function returns a callable 'fitness(model)'.
+    The callable evaluates the model passed to it on the data of the DataLoader, 
+    and it returns a scalar average fitness score across batches.
+
+    Fitness definition by problem: 
+    
+    - Regression / autoencoder (AE) problems: fitness = -avg_loss
+
+    - Classification: fitness = correct / total_images
 
     Args:
-        data: image dataloader
-        problem: either "regression", "classification" or default (AE).
+        data: image DataLoader with (X, y) batches
+        problem: either "regression", "classification" or default ("AE").
+    
+    Returns:
+        callable(nn.Module): function computes fitness for given model
     """
     if problem == "regression":
         loss_fn = nn.MSELoss()
@@ -62,16 +69,30 @@ def model_fitness(data: DataLoader, problem="AE"):
 
 def group_fitness(pop:list, fn):
     """
-    given a model pop and a fitness function, return list of fitnesses for each model
+    Get fitness for population of models.
+
+    Args:
+        pop: list of models
+        fn: function that computes model fitness given a model
+    
+    Returns:
+        list: population fitness values
     """
     return [fn(i) for i in pop]
 
 
 def normalise_fitness(fitnesses: list, bound: tuple):
     """
-    given a fitness bound shaped (max_f, min_f)
-    normalise fitnesses between 0 and 1
-    normalised_f = (f - min)/(max - min) 
+    Normalise fitnesses within the range [0, 1].
+
+    Formula: normalised_f = (f - min_f)/(max_f - min_f)
+
+    Args:
+        fitnesses: list of fitness values
+        bound: tuple (min_f, max_f)
+    
+    Returns:
+        list: Normalised fitness values
     """
     mino, maxo = bound[0], bound[1]
     deno = (maxo - mino + 1e-8)     # small constant to avoid zero division!

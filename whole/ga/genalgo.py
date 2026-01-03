@@ -21,10 +21,27 @@ from .utils import flatten, remodel
 class GeneticAlgorithmV2():
     """
     Single-objective Genetic Algorithm for visual tasks. 
-    """
+
+    The class implements a standard evolutionary loop with torch.nn.Module neural networks,
+    using random parent selection, crossover and mutation.
+
+    Fitness evaluation is task-dependent and can be defined according to the problem
+    (regression/AE: fitness ~ loss; classification: fitness ~ accuracy).
+
+    Both convolutional classifiers and autoencoders are supported, although testing has only
+    been done with architectures in models.py - code may break in other settings.
+
+    Args:
+        model [torch.nn.Module]: model class (not instance)
+        population [list]: population of nn.Modules
+        pop_size [int]: population size
+        train_data [DataLoader]: training DataLoader
+        test_data [DataLoader]: testing DataLoader
+        problem [str]: the kind of task ("regression", "AE" or "classification")... ye, you could optimise at some point...
+        """
     def __init__(
             self,
-            model, # model instance!!!
+            model, # model class!!!
             population,
             pop_size,
             train_data,
@@ -45,11 +62,15 @@ class GeneticAlgorithmV2():
     
     def _trainval_loaders(self, fraction):
         """
-        Get training and validation loaders for the evolutionary loop
-        
-        val_loader_size < train_loader_size
-            - train_loader_size = fraction * tot_train_data (reduce computational cost)
+        Define training and validation DataLoaders for the evolutionary loop
+
+        To reduce computational cost, only subsets of the full training sets are used.
+
+        val_loader_size < train_loader_size !
+            - train_loader_size = fraction * tot_train_data
             - val_loader_size = some_portion * train_loader_size
+
+        Stratification preserves lable proportions.
         """
         full_idxs = list(range(len(self._train_data)))
         if isinstance(self._train_data.targets, torch.Tensor):
@@ -75,7 +96,7 @@ class GeneticAlgorithmV2():
     
 
     def _avg_fitness(self):
-        """ compute avg_population fitness"""
+        """ compute avg. fitness for the current population. """
         fitnesses = [i for i in self._fitnesses if i is not None]
         if not fitnesses:
             return None
@@ -92,56 +113,70 @@ class GeneticAlgorithmV2():
                m_s=0.2,
                mode="uniform"):
         """
-        core evolution method!
+        Core evolution loop.
 
         args:
-            generations: number of generations
-            subset_fraction: proportion of the data you want to use
-            m_r_min: mutation rate lower bound for decay
-            m_r_max: mutation rate upper bound for decay
-            m_r_decay: bool, do you want decay?
-            power: decay parameter
-            m_s: mutation strength
-            mode: crossover type, default "uniform"
+            generations [int]: number of generations
+            subset_fraction [float]: proportion of the data you want to use
+            m_r_min [float]: mutation rate lower bound for decay
+            m_r_max [float]: mutation rate upper bound for decay
+            m_r_decay [bool]: do you want mutation to decay over time?
+            power [float/int]: decay curvature parameter
+            m_s [float]: mutation strength
+            mode [str]: crossover type, default "uniform"
         """
-        #######################################
+        # prepare data and define fitness functions
         train_loader, _ = self._trainval_loaders(subset_fraction)
             
         self._fit_fn = model_fitness(train_loader, self._problem)
 
+        # compute initial population fitness
         self._fitnesses = group_fitness( # clamped within emp_bounds
             self._population, self._fit_fn
         )
         
+        # ----------------------
+        # starting evolution
+        # ----------------------
         for gen in range(generations):
+            # computing decay (gradually shifting from exploration to exploitation)
             if m_r_decay:
                 m_r = m_r_min + (m_r_max - m_r_min)*(1 - (gen/(generations - 1))**power)
 
+            # ------------------
             # mating events
-            flat_children = [] # TOURNAMENT 🔥
+            # ------------------
+            flat_children = [] 
             for _ in range(self._pop_size//2): 
                 
+                # random parent selection and flattening
                 parents = random.sample(self._population, k=2)
                 parent1, parent2 = parents[0], parents[1]
                 parent1 = flatten(parent1)
                 parent2 = flatten(parent2)
-                        
+                
+                # genetic operators
                 child1, child2 = crossover(parent1, parent2, mode=mode)
                 child1 = mutate(child1, m_rate=m_r, m_strength=m_s, mode="small")
                 child2 = mutate(child2, m_rate=m_r, m_strength=m_s, mode="small")
                     
                 flat_children.extend([child1, child2])
 
+            # remodel children into PyTorch models and compute fitness
             remodelled_children = [remodel(f, deepcopy(self._model)) for f in flat_children]
             
             children_fitnesses = group_fitness(
                 remodelled_children, self._fit_fn
             )
 
+            # -----------------------------------------------------
+            # selection from intermediate population for elitism
+            # -----------------------------------------------------
             parents = list(zip(self._population, self._fitnesses))
             children = list(zip(remodelled_children, children_fitnesses))
-            whole = parents + children 
+            whole = parents + children # intermediate population
             
+            # sort the intermediate population and get top N (N = pop_size)
             sorted_whole = sorted(whole, key=lambda x: x[1], reverse=True)
             self._population = [m for m, _ in sorted_whole[:self._pop_size]]
             self._fitnesses = [f for _, f in sorted_whole[:self._pop_size]]
@@ -155,9 +190,14 @@ class GeneticAlgorithmV2():
 
     def test(self, fraction, ensemble=False):
         """
-        compute test fitness and enable population as ensemble if ensemble=True
+        Evaluate population on test data (If ensemble=True, enable population as voting ensemble).
         
-        returns avg_test_fitness, voting_acc
+        Args:
+            fraction [float]: fration of test data to use
+            ensemble [bool]: want voting ensemble?
+
+        Returns:
+            tuple [float, float]: (avg_test_fitness, voting_acc (optional))
         """
         voting_acc = None
 
@@ -239,10 +279,47 @@ class GeneticAlgorithmV2():
 
 
 class GAExperiment():
+    """
+    Directs evolutionary experiments across datasets and experimental conditions
+    using GeneticAlgorithmV2.
+
+    Two models classes are accepted, which need to match if prestep=True.
+
+    Calling .run() performs a number of independent experimental runs
+    in the chosen experimental condition (with or without AE initialisation),
+    as specified by the prestep argument (prestep=True -> yes AE weights).
+
+    (Thank God you included checkpointing).
+
+    Args:
+        model1 [torch.nn.Module]: task model class
+        model2 [torch.nn.Module]: autoencoder class
+        stride [int]: convolutional stride value
+        pop [int]: population size
+        dataset [str]: dataset name (for reporting/saves)
+        subset_fraction [float]: portion of the data to use (save compute!)
+        problem [str]: task problem ("regression", "AE" or "classification")
+        seed [int]: initial seed (automatically updated for each run)
+        experimental_path [str]: filepath for checkpointing/saving results
+        prestep [bool]: determines experimental condition (true->AE weight transfer)
+        AEepochs [int]: epochs for AE training
+        classes [int]: number of classes in classification problems
+        runs [int]: number of runs for experiment
+        gens [int]: number of generation per run
+        mutation_rate_min [float]: lower mutation rate bound (at the end of evolution)
+        mutation_rate_max [float]: upper mutation rate bound (at the beginning of evolution)
+        mutation_rate_decay [bool]: whether mutation decays
+        mutation_strength [float]: Gaussian noise magnitude for mutation
+        mutation_mode [str]: mutation strategy
+        ensemble [bool]: whether to use ensemble strategy
+        my_device [torch.device]: implemented device
+        resume [bool]: whether we are resuming an experiment
+        checkpoint [bool]: whether checkpointing is enabled
+    """
     def __init__(
             self,
-            model1, # task model
-            model2, # autoencoder
+            model1, 
+            model2, 
             stride, # convolutional stride
             pop, # population size
             dataset, # dataset label (i.e., "mnist", "fashion", "kmnist")
@@ -310,6 +387,9 @@ class GAExperiment():
         ]
     
     def _setup(self):
+        """
+        Initailise data splits and input shape.
+        """
         datasets = {"mnist": [MNIST, (1, 28, 28)],
                     "kmnist": [KMNIST, (1, 28, 28)],
                     "fashion": [FashionMNIST, (1, 28, 28)],
@@ -327,12 +407,16 @@ class GAExperiment():
     
 
     def _set_seed(self, seed):
+        """ Set all seeds for independence and reproducibility. """
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
     
     def _checkpoint(self, filepath):
+        """
+        Save experiment details to avoind unnecessary headaches. 
+        """
         with open(filepath, "w") as f:
             json.dump({
                 "results": self._results,
@@ -344,7 +428,9 @@ class GAExperiment():
             }, f)
     
     def _load_checkpoint(self, checkpath):
-        """checkpoint = file.json"""
+        """
+        Restore saved experiment state from checkpoint = file.json.
+        """
         with open(checkpath, "r") as f:
             data = json.load(f)
 
@@ -357,6 +443,7 @@ class GAExperiment():
 
     
     def _save_results(self, path):
+        """ Save results when experiment is over. """
         with open(path, "w") as f:
             json.dump(self._results, f)
 
@@ -366,25 +453,34 @@ class GAExperiment():
     
 
     def run(self):
+        """ Perform experiment in a given condition, executing N runs. """
         self._path.mkdir(parents=True, exist_ok=True)
         
-        ###### if resume, load checkpoint ########
+        # ----------------------------
+        # if resume, load checkpoint 
+        # ----------------------------
         if self._resume and self._path is not None:
             checkpoints = sorted(self._path.glob(f"checkpoint_*.json"))
             if checkpoints:
                 last_checkpoint = checkpoints[-1]
                 self._load_checkpoint(last_checkpoint)
 
-        
+        # -----------------------------
+        # initialise data and seeding
+        # -----------------------------
         self._setup()
         seed = self._current_seed if self._resume else self._seed
         print(f"\n* starting experiment. AE condition: {self._prestep}")
         
-        for run in range(self._run, self._runs):
+        # ---------------------------
+        # EXPERIMENT STARTS HERE !!!
+        # ---------------------------
+        for run in range(self._run, self._runs): # compute run number based on whether resume=True
             if self._runs > 1:
                 print(f"  - run {run}")
             self._set_seed(seed)
 
+            # initialise autoencoder based on condition
             if self._prestep:
                 autopop = create_AE_pop(
                     self._model2,
@@ -396,6 +492,7 @@ class GAExperiment():
                 )
                 print("  - autoencoder population has been created..")
             
+            # initialise evolver
             evolver = GeneticAlgorithmV2(
                 self._model1(stride=self._stride),
                 True,
@@ -405,11 +502,13 @@ class GAExperiment():
                 problem=self._problem
             )
             
+            # transfer weight if prestep=True
             if self._prestep:
                 evolver.transfer_popV2(
                     autopop, self._model1, self._input_shape, self._classes
                 )
             
+            # evolution loop for the current run
             evolver.evolve(
                 generations=self._gens,
                 subset_fraction=self._subset_fraction,
