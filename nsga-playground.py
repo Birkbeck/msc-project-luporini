@@ -4,11 +4,10 @@ from whole.nsga import experiment as exp
 from whole.nsga.models import TinyConvClassifier, TinyFlexyConvAE
 import torch
 
-# ––––––––––––––––––––––––––––––
-# python -m whole.nsga.nsga #??????????
-# ––––––––––––––––––––––––––––––
 
-# –––––----- experiment details ––––––––––– #
+# --------------------------
+#  experiment details 
+# --------------------------
 dataset = "mnist" # mnist, cifar, fashion
 problem = "classification"
 prestep = False 
@@ -17,7 +16,7 @@ subset_fraction=0.07
 
 model1 = TinyConvClassifier # main model
 model2 = TinyFlexyConvAE # autoencoder for AE condition
-interval = [1, 4]
+interval = [1, 3]
 pop = 10
 AEepochs = 4
 bound_runs = 2
@@ -39,7 +38,9 @@ git = False
 checkpoint = False
 
 
-
+# ----------------------
+# results management
+# ---------------------
 print(os.getcwd())
 # move to appropriate nsga directory
 name = "msc_project_repo"
@@ -59,7 +60,9 @@ basepath = basedir / "whole" / "tests" / "NSGA" / f"{dataset}" / f"{condition}"
 basepath.mkdir(parents=True, exist_ok=True)
 
 
-# --–––---––– initialisation –––---–––-- #
+# -----------------------------
+# experiment initialisation 
+# ---------------------------
 print("\nstarting workflow!")
 workflow = exp.ExperimentV4(
     model1=model1,
@@ -93,13 +96,13 @@ workflow = exp.ExperimentV4(
     checkpoint=checkpoint
 )
 
-
-# --––––- experiment --–––- #
+# -------
+# run!
+# -----
 workflow.run()
 
 
 print("\nexperiment's over!")
 
-# results = workflow.get_results()
         
 

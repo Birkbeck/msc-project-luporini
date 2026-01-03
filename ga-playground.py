@@ -5,6 +5,9 @@ from whole.ga.models import TinyFlexyConvAE, TinyConvClassifier
 import whole.ga.genalgo as gen
 
 
+# --------------------------
+#  experiment details 
+# --------------------------
 dataset = "kmnist"
 problem = "classification"
 classes = 10
@@ -34,8 +37,9 @@ resume = False # set true ONLY IF CHECKPOINT_SAVE EXISTS
 checkpoint = False 
 
 
-
-# --------- file management -------- #
+# ----------------------
+# results management
+# ---------------------
 print(os.getcwd())
 # move to appropriate nsga directory
 name = "msc_project_repo"
@@ -52,7 +56,9 @@ basepath = basedir / "whole" / "tests" / "GA" / f"{dataset}" / f"{condition}"
 basepath.mkdir(parents=True, exist_ok=True)
 
 
-# ---------- experiment ----------- #
+# -----------------------------
+# experiment initialisation 
+# ---------------------------
 workflow = gen.GAExperiment(
     model1=classifier, # task model
     model2=autoencoder, # autoencoder
@@ -80,6 +86,9 @@ workflow = gen.GAExperiment(
 )
 
 
+# -------
+# run!
+# -----
 workflow.run()
 
 print("experiment's finished!")

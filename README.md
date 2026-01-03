@@ -1,22 +1,25 @@
 # msc-project-source-code-files-24-25-lupor01
 
-Welcome!
+
+### Welcome!
 
 This repository's root contains the full implementation and results for single- and multi-objective neuroevolution applied to convolutional classifiers. The material included supports quick pipeline inspection, result replication and further experimentation.
+
+    Important: the environment requires PyTorch to run the code.
 
 ## Running experiments
 - ga-playground.py contains a small-scale single-objective GA example
 - genalgo.ipynb contains the full-scale single-objective GA pipeline that appears in the report 
 
-- nsga-playground.py contains the multi-objective NSGA example
-- nsga.ipynb contains the full-scale multi-objective NSGA pipeline that appears in the report
+- nsga-playground.py contains a small-scale multi-objective NSGA example
+- nsga.ipynb contains the full-scale multi-objective NSGA pipeline
 
 ## Analysis
-- analysis.ipynb contains the single-objective GA analysis
-- NSGA_analysis.ipynb contains the multi-objective NSGA analysis
+- analysis.ipynb contains the full single-objective GA analysis
+- NSGA_analysis.ipynb contains the full multi-objective NSGA analysis
 
 
-The playground scripts and analysis notebooks can run as-is. Playgrounds are set for small-scale experiments, and they run smoothly on my 2020 consumer-grade laptop. However, the full-scale experimental notebooks run on Google Colab with GPU acceleration.
+Playground scripts and analysis notebooks as supposed to run as-is. Playgrounds are set for small-scale experiments, and they perform smoothly on my 2020 consumer-grade laptop. However, the full-scale experimental notebooks were implemented on Google Colab with GPU acceleration.
 
 Analysis notebooks are initialised with the project's analyses, which may be replicated straightaway.
 
