@@ -5,21 +5,24 @@
 
 This repository's root contains the full implementation and results for single- and multi-objective neuroevolution applied to convolutional classifiers. The material included supports quick pipeline inspection, result replication and further experimentation.
 
-    Important: the environment requires PyTorch to run the code.
+    Important: a PyTorch environment is required to run the code.
 
 ## Running experiments
-- ga-playground.py contains a small-scale single-objective GA example
-- genalgo.ipynb contains the full-scale single-objective GA pipeline that appears in the report 
+- ga-playground.py contains the single-objective GA pipeline
+- genalgo.ipynb enables the single-objective experiment as run for the report 
 
-- nsga-playground.py contains a small-scale multi-objective NSGA example
-- nsga.ipynb contains the full-scale multi-objective NSGA pipeline
+- nsga-playground.py contains the multi-objective NSGA pipeline
+- nsga.ipynb enables the multi-objective experiment as run for the report
+
 
 ## Analysis
 - analysis.ipynb contains the full single-objective GA analysis
 - NSGA_analysis.ipynb contains the full multi-objective NSGA analysis
 
 
-Playground scripts and analysis notebooks as supposed to run as-is. Playgrounds are set for small-scale experiments, and they perform smoothly on my 2020 consumer-grade laptop. However, the full-scale experimental notebooks were implemented on Google Colab with GPU acceleration.
+Playground scripts and analysis notebooks can run as-is.
+
+Playgrounds are ready to go with small-scale experiments, and they perform smoothly on my 2020 consumer-grade laptop. However, the full-scale experimental notebooks were implemented on Google Colab with GPU acceleration.
 
 Analysis notebooks are initialised with the project's analyses, which may be replicated straightaway.
 
@@ -30,7 +33,7 @@ root/
         |- ga/  # single-objective GA implementation
         |- nsga/  # multi-objective NSGA implementation
         |- practising/  #  training material and legacy scripts
-        |- tests/  #  experimental results
+        |- tests/  #  * experimental results *
             |- GA/ 
             |- NSGA/
 
@@ -39,25 +42,33 @@ The directories ./whole/ga/ and ./whole/nsga/ contain the full implementation fo
 
 
 # -------------------------------------------------------------
-# --------------- CODE: what and where ---------------------
+# --------------- CODE: what and where ----------------------
 # -------------------------------------------------------------
 
-# single-objective GA implementation (./whole/ga/)
+# GA implementation (./whole/ga/)
+- genalgo.py contains the GeneticAlgorithm and Experiment classes
+  .genalgo.GAExperiment enables the final GA abstraction
+  .genalgo.GeneticAlgorithmV2 enables the single-objective evolutionary algorithm
+
 - fitness.py contains fitness-related functions
 - models.py contains classifier and autoencoder classes and related functions
-- operators.py contains functions for crossover and mutation
+- operators.py contains crossover and mutation functions
 - utils.py contains functions for flattening and reconstructing PyTorch models
-- genalgo.py contains the core GeneticAlgorithm and the Experiment classes
 
 
 # multi-objective NSGA implementation (./whole/nsga/)
+- experiment.py contains the Experiment class
+  .experiment.ExperimentV4 is the final NSGA abstraction 
+
+- nsga.py contains the NSGA class and related functions
+  .nsga.NSGA2 enables the multi-objective evolutionary algorithm
+
 - fitness.py same as above
 - models.py same as above
 - operators.py same as above
-- utils.py same as above
-- nsga.py contains the NSGA class, nondominated sorting and crowding distance functions
-- experiment.py contains the Experiment class
+- utils.py same as above but for adjusted for NSGA
 
-Both in GA and NSGA implementations, the Experiment class is the highest-level abstraction that playground scripts use.
+
+In both the GA and NSGA implementations, the Experiment class is the highest-level abstraction that playground.py scripts use.
 
 

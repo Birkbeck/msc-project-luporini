@@ -602,9 +602,7 @@ class ExperimentV4():
     # -----------------------------------------
     ###########################################
     def run(self):
-        # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
-        # create appropriate directory if directory does not exists
-        # ⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
+        
         self._experiment_path.mkdir(parents=True, exist_ok=True)
         
         self._setup()
@@ -698,10 +696,8 @@ class ExperimentV4():
             
 
             # computing emptirical bounds from collected minima and maxima
-            minmax1 = list(zip(*b1)) # [(min, min, ..), (max, max, ..)]
-            minmax2 = list(zip(*b2)) # [(min, min, ..), (max, max, ..)]
-            # mino1, maxo1 = np.percentile(minmax1[0], 5), np.percentile(minmax1[1], 95)
-            # mino2, maxo2 = np.percentile(minmax2[0], 5), np.percentile(minmax2[1], 95)
+            minmax1 = list(zip(*b1)) # [(min, min, ..), (max, max, ..)] # (min, max) per gen
+            minmax2 = list(zip(*b2)) # [(min, min, ..), (max, max, ..)] # (min, max) per gen
             mino1, maxo1 = np.mean(minmax1[0]), np.mean(minmax1[1])
             mino2, maxo2 = np.mean(minmax2[0]), np.mean(minmax2[1])
             self._bounds1, self._bounds2 = (mino1, maxo1), (mino2, maxo2)
