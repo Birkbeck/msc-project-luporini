@@ -1,4 +1,8 @@
-# msc-project-source-code-files-24-25-lupor01
+# msc-project-luporini
+
+##- problem
+##- solution/strategy
+##- results
 
 
 ### Welcome!
