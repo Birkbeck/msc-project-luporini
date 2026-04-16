@@ -1,83 +1,72 @@
-## msc-project-luporini
+# Evolving lightweight convolutional classifiers
 
-# Neuroevolution of convolutional classifiers
+Deploying deep neural networks in real-world settings requires balancing accuracy and computational costs. Increasing model parameters improves expressiveness, but it also introduces memory and storage constraints.
 
-This repository implementats single- and multi-objective neuroevolution to optimise CNN classifiers.
+This project implements neuroevolution to optimise CNN classifiers for accuracy and size simultaneously. It is closely related to Neural Architecture Search and is inspired by recent research on visual assistive technologies for the visually impaired (Kuriakose et al., 2023)
 
-It includes:
+## 1. Key contributions
 
-- A custom PyTorch implementation of a **Genetic Algorithm for single-objective optimisation**
-- A custom PyTorch implementation of **NSGA-II for multi-objective optimisation**
-- Experiment pipelines and full analysis notebooks
+- Implemented single- and multi-objective genetic algorithms from scratch in PyTorch
+- Designed end-to-end evolutionary framework for evolving CNN architectures
+- Demonstrated feasibility of the framework to evolve CNNs under multiple objectives
 
-## Context and results
+## 2. The algorithm
 
-AI cannot be arbitrarily big, and there is growing need for smart approaches to model architecture.
+The final NSGA pipeline evolved populations of heterogeneous architectures. Evolutionary selection favoured high accuracy and small size.
 
-- **analysis.ipynb** contains the full single-objective GA analysis
+Performance was evaluated using:
+
+- avg. accuracy across generations (classification accuracy throughout evolution, averaged across a number of runs).
+- avg. convergence across generations (the Euclidean distance to the ideal solution in the objective space).
+
+## 3. Results
+
+Population performance consistently improves across generations (Fig.1), with populations converging towards the Pareto-optimal front (Fig.2).
+
+This demonstrates that NSGA-II can effectively explore the trade-offs between accuracy and model size, converging towards balanced architectures.
+
+![Accuracy over generations](/whole/tests/visualisation/acc_in_time.png)
+Figure 1. Avg. accuracy increases over generations.
+
+![Convergence over generations](/whole/tests/visualisation/conv_in_time.png)
+Figure 2. Avg. distance from the ideal solution decreases over generations.
+
 - **NSGA_analysis.ipynb** contains the full multi-objective NSGA analysis
 
-![alt text](/whole/tests/visualisation/acc_in_time.png)
-![alt text](/whole/tests/visualisation/conv_in_time.png)
+## 4. Limitations and applications
 
-## Running experiments
+While NSGA-II can be applied to CNN architecture discovery:
 
-⚠️ Refer to <requirements.yml> for the required environment. GPU acceleration is reccommended for full-scale, multi-objective runs.
+- it is computationally expensive compared to gradient-based methods
+- it depends heavily on design choices such as network encoding, selection pressure, and evolutionary schemes
+- scalability to large architectures and/or datasets remains challenging
 
-- **ga-playground.py** contains the single-objective GA pipeline
-- **genalgo.ipynb** enables the single-objective experiment as run for the report
+Ultimately, neuroevolution may be most suitable for hyper-specialised settings, where search space and computationl costs remain manageable.
 
-- **nsga-playground.py** contains the multi-objective NSGA pipeline
-- **nsga.ipynb** enables the multi-objective experiment as run for the report
+# Running experiments
 
-📛 Playground scripts and analysis notebooks can run as-is.
+- **ga-playground.py** is the single-objective GA pipeline
 
-Playgrounds are ready to go with small-scale experiments, and they perform smoothly on my 2020 consumer-grade laptop. However, the full-scale experimental notebooks were implemented on Google Colab with GPU acceleration.
+- **nsga-playground.py** is the multi-objective NSGA pipeline
 
-📛 Analysis notebooks are initialised with the project's analyses, which may be replicated straightaway.
+```bash
+# create environment
+conda env create -f requirements.yml
 
-Granular implementation details are found in individual modules stored in the repository, whose structure is as follows:
+# run GA experiment
+python ga-playground.py
 
-root/
-|- whole/
-|- ga/ # single-objective GA implementation
-|- nsga/ # multi-objective NSGA implementation
-|- practising/ # training material and prototyping material
-|- tests/ # _ experimental results _
-|- GA/
-|- NSGA/
+# run NSGA experiment (GPU acceleration is recommended for full-scale, multi-objective runs)
+python nsga-playground.py
+```
 
-The directory ./whole/tests/ stores all experimental results for both GA and NSGA experiments.
-The directories ./whole/ga/ and ./whole/nsga/ contain the full implementation for GA and NSGA, respectively.
+⚠️ Playground scripts and analysis notebooks can be run as-is. Small-scale, single-objective experiments run reasonably fast on my 2020 MacBook (1.4 GHz Quad-Core Intel Core i5). However, the full-scale NSGA script was implemented on Google Colab with GPU acceleration.
 
-# -------------------------------------------------------------
+⚠️ Analysis notebooks are initialised with the project's analyses, which may be replicated straightaway.
 
-# ---------–------ CODE: what and where ----------------------
+# Repo structure
 
-# -------------------------------------------------------------
-
-# GA implementation (./whole/ga/)
-
-- genalgo.py contains the GeneticAlgorithm and Experiment classes
-  .genalgo.GAExperiment enables the final GA abstraction
-  .genalgo.GeneticAlgorithmV2 enables the single-objective evolutionary algorithm
-
-- fitness.py contains fitness-related functions
-- models.py contains classifier and autoencoder classes and related functions
-- operators.py contains crossover and mutation functions
-- utils.py contains functions for flattening and reconstructing PyTorch models
-
-# multi-objective NSGA implementation (./whole/nsga/)
-
-- experiment.py contains the Experiment class
-  .experiment.ExperimentV4 is the final NSGA abstraction
-
-- nsga.py contains the NSGA class and related functions
-  .nsga.NSGA2 enables the multi-objective evolutionary algorithm
-
-- fitness.py same as above
-- models.py same as above
-- operators.py same as above
-- utils.py same as above but for adjusted for NSGA
-
-In both the GA and NSGA implementations, the Experiment class is the highest-level abstraction that playground.py scripts use.
+- whole/ga/ -- single-objective GA implementation
+- whole/nsga/ -- multi-objective NSGA implementation
+- whole/tests/ -- experimental results and visualisation
+- whole/practising/ -- training material and prototyping material
