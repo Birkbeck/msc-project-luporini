@@ -17,9 +17,8 @@ AI cannot be arbitrarily big, and there is growing need for smart approaches to 
 - **analysis.ipynb** contains the full single-objective GA analysis
 - **NSGA_analysis.ipynb** contains the full multi-objective NSGA analysis
 
-![alt text](/whole/tests/NSGA/acc_in_time.png)
-<img src="/whole/tests/NSGA/acc_in_time.png" alt="alt text">
-<image src="/whole/tests/NSGA/conv_in_time.png" alt="alt text">
+![alt text](/whole/tests/visualisation/acc_in_time.png)
+![alt text](/whole/tests/visualisation/conv_in_time.png)
 
 ## Running experiments
 
