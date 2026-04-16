@@ -31,8 +31,6 @@ Figure 1. Avg. accuracy increases over generations.
 ![Convergence over generations](/whole/tests/visualisation/conv_in_time.png)
 Figure 2. Avg. distance from the ideal solution decreases over generations.
 
-- **NSGA_analysis.ipynb** contains the full multi-objective NSGA analysis
-
 ## 4. Limitations and applications
 
 While NSGA-II can be applied to CNN architecture discovery:
