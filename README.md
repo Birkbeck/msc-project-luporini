@@ -1,6 +1,6 @@
 # Evolving lightweight convolutional classifiers
 
-Deploying deep neural networks in real-world settings requires balancing accuracy and computational costs. Increasing model parameters improves expressiveness, but it also introduces memory and storage constraints.
+Real-world neural network deployment requires balancing accuracy and computational costs. Increasing model parameters improves expressiveness, but it also introduces memory and storage constraints.
 
 This project implements neuroevolution to optimise CNN classifiers for accuracy and size simultaneously. It is closely related to Neural Architecture Search and is inspired by recent research on visual assistive technologies for the visually impaired (Kuriakose et al., 2023)
 
